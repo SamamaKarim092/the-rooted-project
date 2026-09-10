@@ -1,0 +1,86 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Goal {
+  id                 String      @id @default(cuid())
+  title              String
+  description        String?
+  category           String      @default("Craft") // Mind, Body, Craft, Spirit, Career
+  targetDate         DateTime?
+  progressPercentage Int         @default(0)
+  status             String      @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  milestones         Milestone[]
+  habits             Habit[]
+  tasks              Task[]
+}
+
+model Milestone {
+  id          String    @id @default(cuid())
+  goalId      String
+  goal        Goal      @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  title       String
+  stage       String    @default("Milestone") // Seed, Sprout, Milestone
+  isCompleted Boolean   @default(false)
+  order       Int       @default(0)
+  completedAt DateTime?
+  tasks       Task[]
+}
+
+model Habit {
+  id                String     @id @default(cuid())
+  title             String
+  description       String?
+  category          String     @default("Mind") // Mind, Body, Craft, Spirit
+  frequencyType     String     @default("DAILY") // DAILY, TIMES_PER_WEEK
+  targetDaysPerWeek Int        @default(7)
+  targetValue       Int        @default(1)
+  unit              String     @default("times") // times, mins, pages
+  color             String     @default("#7C9A86")
+  status            String     @default("ACTIVE") // ACTIVE, COMPLETED, PAUSED
+  completedAt       DateTime?
+  completionNote    String?
+  goalId            String?
+  goal              Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  createdAt         DateTime   @default(now())
+  logs              HabitLog[]
+}
+
+model HabitLog {
+  id        String   @id @default(cuid())
+  habitId   String
+  habit     Habit    @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      String   // "YYYY-MM-DD"
+  completed Boolean  @default(true)
+  value     Int      @default(1)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([habitId, date])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  title       String
+  description String?
+  priority    String     @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  status      String     @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  dueDate     String?    // "YYYY-MM-DD"
+  dueTime     String?    // "6:00 PM"
+  category    String     @default("Craft") // Mind, Body, Craft, Spirit, Work
+  goalId      String?
+  goal        Goal?      @relation(fields: [goalId], references: [id], onDelete: SetNull)
+  milestoneId String?
+  milestone   Milestone? @relation(fields: [milestoneId], references: [id], onDelete: SetNull)
+  order       Int        @default(0)
+  completedAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
