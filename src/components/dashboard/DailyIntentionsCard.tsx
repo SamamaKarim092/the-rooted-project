@@ -23,7 +23,6 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("Craft");
-  const [newTime, setNewTime] = useState("6:00 PM");
 
   const handleToggle = (taskId: string) => {
     startTransition(async () => {
@@ -39,7 +38,6 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
       await createTask({
         title: newTitle.trim(),
         category: newCategory,
-        dueTime: newTime,
       });
       setNewTitle("");
       setShowAddModal(false);
@@ -83,8 +81,16 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
 
         {/* Task Items Checklist */}
         <div className="space-y-4">
-          {tasks.map((task) => {
-            const isCompleted = task.status === "COMPLETED";
+          {tasks.length === 0 ? (
+            <div className="py-12 text-center text-[#8FA697]">
+              <p className="text-sm font-medium">No daily intentions yet.</p>
+              <p className="text-xs opacity-75 mt-1">
+                Click &ldquo;+&rdquo; above to plant your first intention for today.
+              </p>
+            </div>
+          ) : (
+            tasks.map((task) => {
+              const isCompleted = task.status === "COMPLETED";
 
             return (
               <div
@@ -125,16 +131,10 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
                     </span>
                   )}
                 </div>
-
-                {/* Right: Time Stamp Capsule */}
-                {task.dueTime && (
-                  <div className="shrink-0 px-3.5 py-1 rounded-2xl bg-[#EFEAE0] text-[#1A241E] font-medium text-xs shadow-2xs">
-                    {task.dueTime}
-                  </div>
-                )}
-              </div>
-            );
-          })}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -158,36 +158,22 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
-                    Category
-                  </label>
-                  <select
-                    value={newCategory}
-                    onChange={(e) => setNewCategory(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-sm"
-                  >
-                    <option value="Mind">Mind</option>
-                    <option value="Body">Body</option>
-                    <option value="Craft">Craft</option>
-                    <option value="Spirit">Spirit</option>
-                    <option value="Study">Study (Education)</option>
-                    <option value="Career">Career (Job)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
-                    Scheduled Time
-                  </label>
-                  <input
-                    type="text"
-                    value={newTime}
-                    onChange={(e) => setNewTime(e.target.value)}
-                    placeholder="e.g. 6:00 PM"
-                    className="w-full px-3 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-sm"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
+                  Category
+                </label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full px-3 py-2.5 rounded-2xl border border-[#EAE5D8] bg-white text-sm"
+                >
+                  <option value="Mind">Mind</option>
+                  <option value="Body">Body</option>
+                  <option value="Craft">Craft</option>
+                  <option value="Spirit">Spirit</option>
+                  <option value="Study">Study</option>
+                  <option value="Career">Career</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-4">
