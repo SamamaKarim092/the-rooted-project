@@ -7,12 +7,14 @@ export const revalidate = 0;
 export default async function TasksPage() {
   const today = getTodayString();
   const tasks = await prisma.task.findMany({
-    orderBy: [{ status: "asc" }, { dueDate: "asc" }, { dueTime: "asc" }],
+    orderBy: [{ order: "asc" }, { createdAt: "asc" }],
     include: {
       goal: true,
       milestone: true,
     },
   });
+
+  tasks.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   const goals = await prisma.goal.findMany({
     where: { status: "ACTIVE" },
