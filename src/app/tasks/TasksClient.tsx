@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useEffect } from "react";
 import { 
   Check, 
   Plus, 
@@ -11,13 +11,30 @@ import {
   Filter,
   Sparkles,
   CalendarDays,
+  CalendarClock,
+  CalendarPlus,
   AlertCircle,
   Sun,
   Sunrise,
-  CheckCircle2
+  CheckCircle2,
+  Pencil,
+  SlidersHorizontal,
+  RotateCcw,
+  X,
+  ArrowDownUp,
+  ArrowRight
 } from "lucide-react";
-import { toggleTaskStatus, createTask } from "@/lib/actions";
+import { 
+  toggleTaskStatus, 
+  createTask, 
+  updateTask, 
+  deleteTask, 
+  reorderTasks, 
+  rescheduleTask, 
+  rescheduleAllOverdueTasks 
+} from "@/lib/actions";
 import { formatTaskDateHeading, TaskDateGroupMeta } from "@/lib/utils";
+import { TodayClockDial } from "@/components/tasks/TodayClockDial";
 
 interface Goal {
   id: string;
@@ -35,6 +52,8 @@ interface Task {
   category: string;
   goalId: string | null;
   goal?: Goal | null;
+  order?: number;
+  createdAt?: Date | string;
 }
 
 interface TasksClientProps {
@@ -45,21 +64,171 @@ interface TasksClientProps {
 
 export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
   const [tasks, setTasks] = useState(initialTasks);
-  const [activeTab, setActiveTab] = useState<"ALL" | "TODAY" | "UPCOMING" | "COMPLETED" | "OVERDUE">("TODAY");
+  const [activeTab, setActiveTab] = useState<"ALL" | "TODAY" | "UPCOMING" | "ANYTIME" | "COMPLETED" | "OVERDUE">("TODAY");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [isPending, startTransition] = useTransition();
   const [showAddModal, setShowAddModal] = useState(false);
 
-  // Form State
+  // Sync state when props change
+  useEffect(() => {
+    setTasks(initialTasks);
+  }, [initialTasks]);
+
+  // Tab Count Calculations
+  const todayCount = useMemo(
+    () => tasks.filter((t) => t.dueDate === today && t.status !== "COMPLETED").length,
+    [tasks, today]
+  );
+  const upcomingCount = useMemo(
+    () => tasks.filter((t) => Boolean(t.dueDate && t.dueDate > today) && t.status !== "COMPLETED").length,
+    [tasks, today]
+  );
+  const anytimeCount = useMemo(
+    () => tasks.filter((t) => !t.dueDate && t.status !== "COMPLETED").length,
+    [tasks]
+  );
+  const overdueCount = useMemo(
+    () => tasks.filter((t) => Boolean(t.dueDate && t.dueDate < today) && t.status !== "COMPLETED").length,
+    [tasks, today]
+  );
+
+  // Create Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("MEDIUM");
   const [category, setCategory] = useState("Craft");
   const [dueDate, setDueDate] = useState(today);
-  const [dueTime, setDueTime] = useState("6:00 PM");
+  const [isAnytime, setIsAnytime] = useState(false);
   const [goalId, setGoalId] = useState("");
 
+  // Edit Form State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editPriority, setEditPriority] = useState("MEDIUM");
+  const [editCategory, setEditCategory] = useState("Craft");
+  const [editDueDate, setEditDueDate] = useState(today);
+  const [editIsAnytime, setEditIsAnytime] = useState(false);
+  const [editGoalId, setEditGoalId] = useState("");
+
+  // Filter & Sort States
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const [sortBy, setSortBy] = useState<"CUSTOM" | "NEWEST" | "OLDEST" | "PRIORITY_DESC" | "DATE_ASC">("CUSTOM");
+  const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
+  const [goalFilter, setGoalFilter] = useState<"ALL" | "WITH_GOAL" | "INDEPENDENT">("ALL");
+
+  const isFilterActive = sortBy !== "CUSTOM" || priorityFilter !== "ALL" || goalFilter !== "ALL";
+
+  const handleResetFilters = () => {
+    setSortBy("CUSTOM");
+    setPriorityFilter("ALL");
+    setGoalFilter("ALL");
+  };
+
+  // Inline Quick-Add State
+  const [inlineTitle, setInlineTitle] = useState("");
+  const [inlineCategory, setInlineCategory] = useState("Craft");
+  const [inlinePriority, setInlinePriority] = useState("MEDIUM");
+
+  // Morning Reset State: persists dismissal for the calendar day in localStorage
+  const [dismissedOverdueBanner, setDismissedOverdueBanner] = useState(false);
+
+  useEffect(() => {
+    try {
+      const dismissedDate = localStorage.getItem("rooted_dismissed_morning_reset_date");
+      if (dismissedDate === today) {
+        setDismissedOverdueBanner(true);
+      }
+    } catch {
+      // Ignore if localStorage is unavailable
+    }
+  }, [today]);
+
+  const handleDismissMorningReset = () => {
+    setDismissedOverdueBanner(true);
+    try {
+      localStorage.setItem("rooted_dismissed_morning_reset_date", today);
+    } catch {
+      // Ignore
+    }
+  };
+
+  // Helper for tomorrow date
+  const getTomorrowDate = (baseDateStr?: string | null) => {
+    const ref = baseDateStr || today;
+    const parts = ref.split("-");
+    if (parts.length === 3) {
+      const [year, month, day] = parts.map(Number);
+      const d = new Date(year, month - 1, day);
+      d.setDate(d.getDate() + 1);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${dd}`;
+    }
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d.toISOString().split("T")[0];
+  };
+
+  const overdueTasks = useMemo(() => {
+    return tasks.filter((t) => t.status === "PENDING" && t.dueDate && t.dueDate < today);
+  }, [tasks, today]);
+
+  const todayTasks = useMemo(() => {
+    return tasks.filter((t) => t.dueDate === today);
+  }, [tasks, today]);
+
+  const allTodayCompleted = todayTasks.length > 0 && todayTasks.every((t) => t.status === "COMPLETED");
+
+  // Completion ripple animation tracking
+  const [completedRippleId, setCompletedRippleId] = useState<string | null>(null);
+
+  // Drag and Drop state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, taskId: string) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", taskId);
+    setDraggedTaskId(taskId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (dragOverTaskId !== taskId) {
+      setDragOverTaskId(taskId);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault();
+    if (dragOverTaskId !== taskId) {
+      setDragOverTaskId(taskId);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+  };
+
+
   const handleToggle = (taskId: string) => {
+    const task = tasks.find((t) => t.id === taskId);
+    const willBeCompleted = task?.status !== "COMPLETED";
+
+    if (willBeCompleted) {
+      setCompletedRippleId(taskId);
+      setTimeout(() => {
+        setCompletedRippleId((curr) => (curr === taskId ? null : curr));
+      }, 1600);
+    } else {
+      setCompletedRippleId(null);
+    }
+
     // Optimistic update
     setTasks((prev) =>
       prev.map((t) =>
@@ -74,6 +243,13 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
     });
   };
 
+  const handleDelete = (taskId: string) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    startTransition(async () => {
+      await deleteTask(taskId);
+    });
+  };
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
@@ -84,8 +260,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
         description: description.trim() || undefined,
         priority,
         category,
-        dueDate,
-        dueTime,
+        dueDate: isAnytime ? null : dueDate,
         goalId: goalId || undefined,
       });
 
@@ -95,20 +270,167 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
       setShowAddModal(false);
       setTitle("");
       setDescription("");
+      setIsAnytime(false);
     });
   };
 
-  // 1. Filter tasks according to active tab and category
+  const handleOpenEdit = (task: Task) => {
+    setEditingTask(task);
+    setEditTitle(task.title);
+    setEditDescription(task.description || "");
+    setEditPriority(task.priority || "MEDIUM");
+    setEditCategory(task.category || "Craft");
+    setEditIsAnytime(!task.dueDate);
+    setEditDueDate(task.dueDate || today);
+    setEditGoalId(task.goalId || "");
+    setShowEditModal(true);
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTask || !editTitle.trim()) return;
+
+    const taskId = editingTask.id;
+    const updatedData = {
+      title: editTitle.trim(),
+      description: editDescription.trim() || undefined,
+      priority: editPriority,
+      category: editCategory,
+      dueDate: editIsAnytime ? null : (editDueDate || null),
+      goalId: editGoalId || null,
+    };
+
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId
+          ? {
+              ...t,
+              title: updatedData.title,
+              description: updatedData.description || null,
+              priority: updatedData.priority,
+              category: updatedData.category,
+              dueDate: updatedData.dueDate,
+              goalId: updatedData.goalId,
+            }
+          : t
+      )
+    );
+
+    setShowEditModal(false);
+    setEditingTask(null);
+
+    startTransition(async () => {
+      await updateTask(taskId, updatedData as any);
+    });
+  };
+
+  const handleInlineCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inlineTitle.trim()) return;
+
+    const titleToPlant = inlineTitle.trim();
+    const catToPlant = inlineCategory;
+    const prioToPlant = inlinePriority;
+    const targetDueDate = activeTab === "ANYTIME" ? null : today;
+    setInlineTitle("");
+
+    startTransition(async () => {
+      const newTask = await createTask({
+        title: titleToPlant,
+        category: catToPlant,
+        priority: prioToPlant,
+        dueDate: targetDueDate,
+      });
+
+      if (newTask) {
+        setTasks((prev) => [newTask as Task, ...prev]);
+      }
+    });
+  };
+
+  const handlePostponeToTomorrow = (taskId: string, currentDueDate?: string | null) => {
+    const tomorrow = getTomorrowDate(currentDueDate);
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, dueDate: tomorrow } : t))
+    );
+
+    startTransition(async () => {
+      await rescheduleTask(taskId, tomorrow);
+    });
+  };
+
+  const handleMoveToToday = (taskId: string) => {
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, dueDate: today } : t))
+    );
+
+    startTransition(async () => {
+      await rescheduleTask(taskId, today);
+    });
+  };
+
+  const handleMoveToAnytime = (taskId: string) => {
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, dueDate: null } : t))
+    );
+
+    startTransition(async () => {
+      await rescheduleTask(taskId, null);
+    });
+  };
+
+  const handleRescheduleAllOverdue = () => {
+    try {
+      localStorage.setItem("rooted_dismissed_morning_reset_date", today);
+    } catch {
+      // Ignore
+    }
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.status === "PENDING" && t.dueDate && t.dueDate < today
+          ? { ...t, dueDate: today }
+          : t
+      )
+    );
+
+    startTransition(async () => {
+      await rescheduleAllOverdueTasks(today);
+    });
+  };
+
+  const priorityWeight = (p: string) => {
+    switch (p?.toUpperCase()) {
+      case "URGENT":
+        return 4;
+      case "HIGH":
+        return 3;
+      case "MEDIUM":
+        return 2;
+      case "LOW":
+        return 1;
+      default:
+        return 0;
+    }
+  };
+
+  // 1. Filter tasks according to active tab, category, priority, and goal alignment
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const isToday = task.dueDate === today;
       const isCompleted = task.status === "COMPLETED";
-      const isOverdue = !isCompleted && task.dueDate && task.dueDate < today;
-      const isUpcoming = !isCompleted && task.dueDate && task.dueDate > today;
+      const isOverdue = !isCompleted && Boolean(task.dueDate && task.dueDate < today);
+      const isUpcoming = !isCompleted && Boolean(task.dueDate && task.dueDate > today);
+      const isAnytime = !isCompleted && !task.dueDate;
 
       // Tab filter
       if (activeTab === "TODAY" && !isToday) return false;
       if (activeTab === "UPCOMING" && !isUpcoming) return false;
+      if (activeTab === "ANYTIME" && !isAnytime) return false;
       if (activeTab === "COMPLETED" && !isCompleted) return false;
       if (activeTab === "OVERDUE" && !isOverdue) return false;
 
@@ -117,9 +439,18 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
         return false;
       }
 
+      // Priority filter
+      if (priorityFilter !== "ALL" && task.priority.toUpperCase() !== priorityFilter.toUpperCase()) {
+        return false;
+      }
+
+      // Goal filter
+      if (goalFilter === "WITH_GOAL" && !task.goalId) return false;
+      if (goalFilter === "INDEPENDENT" && task.goalId) return false;
+
       return true;
     });
-  }, [tasks, activeTab, selectedCategory, today]);
+  }, [tasks, activeTab, selectedCategory, priorityFilter, goalFilter, today]);
 
   // 2. Group filtered tasks by Date to build prominent date headings
   const groupedTasks = useMemo(() => {
@@ -129,16 +460,45 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
       items: Task[];
     }[] = [];
 
+    // Comparator based on sortBy
+    const compareWithinGroup = (a: Task, b: Task) => {
+      if (sortBy === "NEWEST") {
+        // Last entered on top (Top - Bottom)
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeB - timeA;
+      }
+      if (sortBy === "OLDEST") {
+        // Last entered on bottom (Bottom - Top)
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return timeA - timeB;
+      }
+      if (sortBy === "PRIORITY_DESC") {
+        return priorityWeight(b.priority) - priorityWeight(a.priority);
+      }
+      if (sortBy === "DATE_ASC") {
+        const dateA = a.dueDate || "9999-99-99";
+        const dateB = b.dueDate || "9999-99-99";
+        return dateA.localeCompare(dateB);
+      }
+      // Default / CUSTOM order (from drag-to-shuffle)
+      return (a.order ?? 0) - (b.order ?? 0);
+    };
+
     // Sort order based on tab
     const sorted = [...filteredTasks].sort((a, b) => {
       const dateA = a.dueDate || "9999-99-99";
       const dateB = b.dueDate || "9999-99-99";
-      // Completed and Overdue: show most recent first
-      if (activeTab === "COMPLETED" || activeTab === "OVERDUE") {
-        return dateB.localeCompare(dateA);
+      // If dates differ:
+      if (dateA !== dateB) {
+        if (activeTab === "COMPLETED" || activeTab === "OVERDUE") {
+          return dateB.localeCompare(dateA);
+        }
+        return dateA.localeCompare(dateB);
       }
-      // Upcoming and All: chronological ascending
-      return dateA.localeCompare(dateB);
+      // If same date: apply the sorting comparator!
+      return compareWithinGroup(a, b);
     });
 
     // Grouping
@@ -165,10 +525,53 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
         meta: formatTaskDateHeading(today, today),
         items: [],
       });
+    } else if (activeTab === "ANYTIME" && groups.length === 0) {
+      groups.push({
+        dateKey: "unscheduled",
+        meta: formatTaskDateHeading(null, today),
+        items: [],
+      });
     }
 
     return groups;
-  }, [filteredTasks, activeTab, today]);
+  }, [filteredTasks, activeTab, sortBy, today]);
+
+  const handleDrop = (e: React.DragEvent, targetTaskId: string) => {
+    e.preventDefault();
+    const sourceTaskId = e.dataTransfer.getData("text/plain") || draggedTaskId;
+
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+
+    if (!sourceTaskId || sourceTaskId === targetTaskId) {
+      return;
+    }
+
+    const currentVisualOrder = groupedTasks.flatMap((g) => g.items);
+    const sourceIdx = currentVisualOrder.findIndex((t) => t.id === sourceTaskId);
+    const targetIdx = currentVisualOrder.findIndex((t) => t.id === targetTaskId);
+    if (sourceIdx === -1 || targetIdx === -1) return;
+
+    const newVisualOrder = [...currentVisualOrder];
+    const [moved] = newVisualOrder.splice(sourceIdx, 1);
+    newVisualOrder.splice(targetIdx, 0, moved);
+
+    // Keep hidden tasks (e.g. from other tabs or filtered out) in order
+    const visibleIdSet = new Set(newVisualOrder.map((t) => t.id));
+    const hiddenTasks = tasks.filter((t) => !visibleIdSet.has(t.id));
+
+    const combined = [...newVisualOrder, ...hiddenTasks];
+    const reordered = combined.map((t, idx) => ({ ...t, order: idx }));
+
+    // Switch to CUSTOM so the dropped arrangement stays visually fixed and active
+    setSortBy("CUSTOM");
+    setTasks(reordered);
+
+    // Persist to database
+    startTransition(async () => {
+      await reorderTasks(reordered.map((t) => t.id));
+    });
+  };
 
   const getPriorityStyle = (p: string) => {
     switch (p.toUpperCase()) {
@@ -203,6 +606,9 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
   };
 
   const getDateHeaderIcon = (meta: TaskDateGroupMeta) => {
+    if (meta.diffDays === 9999) {
+      return <Sparkles className="w-5 h-5 text-[#D4A373]" />;
+    }
     if (meta.isToday) {
       return <Sun className="w-5 h-5 text-[#D4A373]" />;
     } else if (meta.isTomorrow) {
@@ -217,7 +623,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
           <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-[#1A241E]">
             Daily Intentions & Tasks
@@ -227,51 +633,403 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
           </p>
         </div>
 
-        <button
-          onClick={() => setShowAddModal(true)}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-[#1E3127] hover:bg-[#2A3F34] text-[#FAF7F0] font-medium text-sm transition-all shadow-xs self-start md:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>New Intention</span>
-        </button>
+        <div className="flex items-center gap-4 flex-wrap self-start lg:self-auto">
+          {/* Clock-type Organic Counter for Today */}
+          <TodayClockDial tasks={tasks} today={today} />
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#1E3127] hover:bg-[#2A3F34] text-[#FAF7F0] font-medium text-sm transition-all shadow-xs shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Intention</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs & Category Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE5D8] pb-4">
         {/* Main Status Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          {(["TODAY", "UPCOMING", "COMPLETED", "OVERDUE", "ALL"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all ${
-                activeTab === tab
-                  ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
-                  : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
-              }`}
-            >
-              {tab.toLowerCase()}
-            </button>
-          ))}
+          {(["TODAY", "UPCOMING", "ANYTIME", "COMPLETED", "OVERDUE", "ALL"] as const).map((tab) => {
+            let count: number | null = null;
+            if (tab === "TODAY") count = todayCount;
+            else if (tab === "UPCOMING") count = upcomingCount;
+            else if (tab === "ANYTIME") count = anytimeCount;
+            else if (tab === "OVERDUE") count = overdueCount;
+
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${
+                  activeTab === tab
+                    ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                    : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
+                }`}
+              >
+                <span>{tab.toLowerCase()}</span>
+                {count !== null && count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                      activeTab === tab
+                        ? "bg-[#2A3F34] text-[#FAF7F0]"
+                        : "bg-[#EFEAE0] text-[#586B60]"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Category Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto">
-          {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => (
+        {/* Right side: Category Pills + Filter & Order Popover */}
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+          {/* Category Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
+                  selectedCategory === cat
+                    ? "bg-[#D4A373] text-white"
+                    : "bg-[#EFEAE0] text-[#586B60] hover:text-[#1A241E]"
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          {/* Filter & Order Popover Button */}
+          <div className="relative shrink-0">
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                selectedCategory === cat
-                  ? "bg-[#D4A373] text-white"
-                  : "bg-[#EFEAE0] text-[#586B60] hover:text-[#1A241E]"
+              onClick={() => setShowFilterMenu((prev) => !prev)}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl border text-xs font-semibold tracking-wide transition-all shadow-2xs ${
+                isFilterActive
+                  ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127]"
+                  : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border-[#EAE5D8] hover:border-[#7C9A86]/50"
               }`}
             >
-              {cat}
+              <SlidersHorizontal className="w-3.5 h-3.5" />
+              <span>Filter &amp; Order</span>
+              {isFilterActive && (
+                <span className="w-2 h-2 rounded-full bg-[#D98A6C] animate-pulse" />
+              )}
             </button>
-          ))}
+
+            {/* Filter & Order Dropdown Modal */}
+            {showFilterMenu && (
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 z-40 bg-[#FAF7F0] border border-[#EAE5D8] rounded-3xl p-5 shadow-xl text-[#1A241E]">
+                {/* Popover Header */}
+                <div className="flex items-center justify-between pb-3 border-b border-[#EAE5D8]">
+                  <div className="flex items-center gap-2">
+                    <SlidersHorizontal className="w-4 h-4 text-[#7C9A86]" />
+                    <span className="font-serif text-base font-bold text-[#1A241E]">
+                      Filter &amp; Order
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {isFilterActive && (
+                      <button
+                        type="button"
+                        onClick={handleResetFilters}
+                        className="flex items-center gap-1 text-[11px] font-semibold text-[#C87452] hover:text-[#D98A6C] transition-colors"
+                      >
+                        <RotateCcw className="w-3 h-3" />
+                        <span>Reset</span>
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowFilterMenu(false)}
+                      className="p-1 rounded-full text-[#8E9E94] hover:text-[#1A241E] hover:bg-[#EAE5D8]/50 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Section 1: Order / Sequence */}
+                <div className="py-3.5 border-b border-[#EAE5D8] space-y-2.5">
+                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#586B60]">
+                    <ArrowDownUp className="w-3.5 h-3.5 text-[#D4A373]" />
+                    <span>Order Intentions</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    {[
+                      {
+                        key: "NEWEST",
+                        title: "Last entered on top (Top - Bottom)",
+                        subtitle: "Newest created intentions first",
+                      },
+                      {
+                        key: "OLDEST",
+                        title: "Last entered on bottom (Bottom - Top)",
+                        subtitle: "Oldest created intentions first",
+                      },
+                      {
+                        key: "CUSTOM",
+                        title: "Custom manual rhythm",
+                        subtitle: "Organize freely with drag & drop handle",
+                      },
+                      {
+                        key: "PRIORITY_DESC",
+                        title: "Priority (Urgent → Low)",
+                        subtitle: "Highest priority intentions first",
+                      },
+                      {
+                        key: "DATE_ASC",
+                        title: "Due Date (Earliest → Latest)",
+                        subtitle: "Imminent deadlines first",
+                      },
+                    ].map((opt) => {
+                      const isSelected = sortBy === opt.key;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setSortBy(opt.key as any)}
+                          className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-start justify-between gap-2 ${
+                            isSelected
+                              ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127]"
+                              : "bg-white text-[#1A241E] border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                          }`}
+                        >
+                          <div>
+                            <p className="text-xs font-bold leading-tight">{opt.title}</p>
+                            <p
+                              className={`text-[10px] mt-0.5 ${
+                                isSelected ? "text-[#D1C9BD]" : "text-[#8E9E94]"
+                              }`}
+                            >
+                              {opt.subtitle}
+                            </p>
+                          </div>
+                          {isSelected && <Check className="w-4 h-4 text-[#FAF7F0] shrink-0 mt-0.5" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Section 2: Priority Filter */}
+                <div className="py-3.5 border-b border-[#EAE5D8] space-y-2">
+                  <span className="block text-xs font-bold uppercase tracking-wider text-[#586B60]">
+                    Filter by Priority
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {["ALL", "URGENT", "HIGH", "MEDIUM", "LOW"].map((p) => {
+                      const isSelected = priorityFilter === p;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPriorityFilter(p)}
+                          className={`px-3 py-1 rounded-xl text-xs font-semibold tracking-wider transition-all ${
+                            isSelected
+                              ? "bg-[#7C9A86] text-white shadow-2xs"
+                              : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Section 3: Goal Alignment Filter */}
+                {goals.length > 0 && (
+                  <div className="py-3.5 border-b border-[#EAE5D8] space-y-2">
+                    <span className="block text-xs font-bold uppercase tracking-wider text-[#586B60]">
+                      Filter by Goal
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[
+                        { key: "ALL", label: "All Intentions" },
+                        { key: "WITH_GOAL", label: "Linked to Goal" },
+                        { key: "INDEPENDENT", label: "Independent Only" },
+                      ].map((g) => {
+                        const isSelected = goalFilter === g.key;
+                        return (
+                          <button
+                            key={g.key}
+                            type="button"
+                            onClick={() => setGoalFilter(g.key as any)}
+                            className={`px-3 py-1 rounded-xl text-xs font-medium transition-all ${
+                              isSelected
+                                ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                                : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                            }`}
+                          >
+                            {g.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Popover Footer */}
+                <div className="pt-4 flex items-center justify-between">
+                  <span className="text-[11px] text-[#8E9E94]">
+                    {isFilterActive ? "Custom filter active" : "Default order active"}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowFilterMenu(false)}
+                    className="px-4 py-1.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-colors"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
+
+
+      {/* Morning Reset: Reschedule All Overdue to Today Banner */}
+      {overdueTasks.length > 0 && !dismissedOverdueBanner && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-[#FAF6EE] border border-[#EADFC7] shadow-xs text-xs text-[#1A241E] animate-in fade-in duration-300">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-[#EFE3D3] border border-[#E2D2BC] flex items-center justify-center shrink-0 text-[#C87452]">
+              <CalendarClock className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="font-serif text-sm font-semibold text-[#1A241E]">
+                Morning Reset: {overdueTasks.length} {overdueTasks.length === 1 ? "intention" : "intentions"} left from previous days
+              </p>
+              <p className="text-[11px] text-[#586B60] mt-0.5">
+                Bring unfinished intentions directly into today&apos;s focus with one click.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+            <button
+              type="button"
+              onClick={handleRescheduleAllOverdue}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] font-semibold text-xs hover:bg-[#2A3F34] transition-all shadow-2xs cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reschedule All to Today</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissMorningReset}
+              title="Dismiss for today"
+              className="p-1.5 rounded-xl text-[#8E9E94] hover:text-[#1A241E] hover:bg-[#EAE5D8]/50 transition-colors cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Inline Quick-Add Intention Input (Speed of Capture) */}
+      <form
+        onSubmit={handleInlineCreate}
+        className="group bg-white border border-[#EAE5D8] focus-within:border-[#7C9A86] focus-within:ring-2 focus-within:ring-[#7C9A86]/20 rounded-3xl p-2.5 sm:p-3 shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-2.5 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-full bg-[#FAF7F0] border border-[#EAE5D8] flex items-center justify-center text-[#7C9A86] shrink-0">
+            <Plus className="w-4 h-4" />
+          </div>
+          <input
+            type="text"
+            value={inlineTitle}
+            onChange={(e) => setInlineTitle(e.target.value)}
+            placeholder={
+              activeTab === "ANYTIME"
+                ? "Capture an intention for anytime... (No fixed deadline, press Enter)"
+                : "Plant an intention for today... (Press Enter to save)"
+            }
+            className="w-full bg-transparent border-none outline-none text-sm text-[#1A241E] placeholder:text-[#8E9E94] font-medium"
+          />
+        </div>
+
+        {/* Quick Selectors: Category & Priority + Submit button */}
+        <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+          {/* Category selector */}
+          <select
+            value={inlineCategory}
+            onChange={(e) => setInlineCategory(e.target.value)}
+            title="Category"
+            className="bg-[#FAF7F0] border border-[#EAE5D8] text-[11px] font-semibold text-[#586B60] rounded-xl px-2.5 py-1.5 outline-none cursor-pointer hover:border-[#7C9A86]/50 transition-colors"
+          >
+            {["Craft", "Mind", "Body", "Spirit", "Study", "Career"].map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          {/* Priority selector */}
+          <select
+            value={inlinePriority}
+            onChange={(e) => setInlinePriority(e.target.value)}
+            title="Priority"
+            className="bg-[#FAF7F0] border border-[#EAE5D8] text-[11px] font-semibold text-[#586B60] rounded-xl px-2.5 py-1.5 outline-none cursor-pointer hover:border-[#7C9A86]/50 transition-colors"
+          >
+            <option value="LOW">Low</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HIGH">High</option>
+            <option value="URGENT">Urgent</option>
+          </select>
+
+          {/* Submit button */}
+          <button
+            type="submit"
+            disabled={!inlineTitle.trim()}
+            className="flex items-center gap-1 px-3.5 py-1.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] font-medium text-xs hover:bg-[#2A3F34] transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs cursor-pointer"
+          >
+            <span>Plant</span>
+            <ArrowRight className="w-3 h-3" />
+          </button>
+        </div>
+      </form>
+
+      {/* Anytime Guidance Card */}
+      {activeTab === "ANYTIME" && (
+        <div className="p-4 rounded-3xl bg-[#FAF8F2] border border-[#EAE5D8] shadow-2xs flex items-center justify-between gap-3 text-xs text-[#586B60]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-2xl bg-[#EFEAE0] text-[#7C9A86] flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 text-[#D4A373]" />
+            </div>
+            <div>
+              <span className="font-semibold text-[#1A241E] block text-xs">
+                Anytime Intentions (No Fixed Deadline)
+              </span>
+              <span className="text-[11px] text-[#586B60]">
+                Chores, reading list, and ideas to tackle whenever time allows. Click &ldquo;Do Today&rdquo; to promote any intention into today&apos;s queue.
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Intentions Met Evening Tranquility Card */}
+      {activeTab === "TODAY" && allTodayCompleted && (
+        <div className="p-6 rounded-3xl bg-gradient-to-br from-[#FAF8F2] via-[#F4F9F5] to-[#EAF2ED] border border-[#7C9A86]/30 shadow-xs text-center space-y-2 animate-in fade-in duration-500">
+          <div className="w-10 h-10 rounded-full bg-[#7C9A86]/20 border border-[#7C9A86]/40 flex items-center justify-center mx-auto text-[#1E3127]">
+            <Sparkles className="w-5 h-5 text-[#7C9A86]" />
+          </div>
+          <h4 className="font-serif text-lg font-semibold text-[#1E3127]">
+            All Daily Intentions Fulfilled
+          </h4>
+          <p className="text-xs text-[#586B60] max-w-md mx-auto">
+            Take a deep breath, ground yourself, and enjoy the stillness. Your roots grow deeper with each mindful day.
+          </p>
+        </div>
+      )}
 
       {/* Date-Grouped Tasks Container */}
       <div className="space-y-7">
@@ -334,27 +1092,62 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                     <div className="space-y-3">
                       {group.items.map((task) => {
                         const isCompleted = task.status === "COMPLETED";
+                        const isRippling = completedRippleId === task.id;
 
                         return (
                           <div
                             key={task.id}
-                            className={`flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all ${
-                              isCompleted
-                                ? "bg-[#FAF8F2] border-[#EAE5D8] opacity-75"
+                            onDragOver={(e) => handleDragOver(e, task.id)}
+                            onDragEnter={(e) => handleDragEnter(e, task.id)}
+                            onDrop={(e) => handleDrop(e, task.id)}
+                            className={`group relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl border transition-all duration-500 ${
+                              draggedTaskId === task.id
+                                ? "opacity-35 scale-[0.98] border-dashed border-[#7C9A86] bg-[#FAF8F2]"
+                                : dragOverTaskId === task.id
+                                ? "border-t-2 border-t-[#7C9A86] ring-2 ring-[#7C9A86]/20 bg-[#FAF8F2]"
+                                : isRippling
+                                ? "bg-[#EBF5EE] border-[#7C9A86] ring-2 ring-[#7C9A86]/50 shadow-[0_4px_24px_rgba(124,154,134,0.35)] scale-[1.015]"
+                                : isCompleted
+                                ? "bg-[#F7FAF8] border-[#DCE8E0] opacity-80"
                                 : "bg-[#FFFFFF] border-[#EAE5D8] hover:border-[#7C9A86]/50 shadow-2xs"
                             }`}
                           >
-                            {/* Left: Check trigger + Info */}
-                            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+                            {/* Organic botanical ripple glow */}
+                            {isRippling && (
+                              <span className="absolute -left-6 -top-6 w-36 h-36 bg-[#7C9A86]/30 rounded-full blur-xl pointer-events-none animate-ping" />
+                            )}
+
+                            {/* Left: Drag Handle & Tactile Up/Down Shuffle + Check trigger + Info */}
+                            <div className="flex items-start sm:items-center gap-2.5 min-w-0">
+                              {/* 3 Horizontal Lines Drag Grip Handle */}
+                              <div
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, task.id)}
+                                onDragEnd={handleDragEnd}
+                                title="Drag to shuffle order"
+                                className="cursor-grab active:cursor-grabbing p-1.5 -ml-1 text-[#8E9E94] hover:text-[#1A241E] hover:bg-[#FAF8F2] rounded-lg transition-colors flex flex-col gap-[3px] items-center justify-center shrink-0 select-none"
+                              >
+                                <span className="w-3.5 h-[2px] bg-current rounded-full" />
+                                <span className="w-3.5 h-[2px] bg-current rounded-full" />
+                                <span className="w-3.5 h-[2px] bg-current rounded-full" />
+                              </div>
+
                               <button
                                 onClick={() => handleToggle(task.id)}
-                                className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all mt-0.5 sm:mt-0 shrink-0 ${
+                                className={`relative w-6 h-6 rounded-full flex items-center justify-center border transition-all duration-300 mt-0.5 sm:mt-0 shrink-0 cursor-pointer ${
                                   isCompleted
-                                    ? "bg-[#7C9A86] border-[#7C9A86] text-white"
+                                    ? "bg-[#7C9A86] border-[#7C9A86] text-white scale-110 shadow-xs"
                                     : "border-[#8E9E94] hover:border-[#1E3127]"
                                 }`}
                               >
-                                {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                                {/* Circular ripple wave rings */}
+                                {isRippling && (
+                                  <>
+                                    <span className="absolute -inset-1 rounded-full bg-[#7C9A86]/40 animate-ping pointer-events-none" />
+                                    <span className="absolute -inset-2.5 rounded-full border-2 border-[#7C9A86]/70 animate-pulse pointer-events-none" />
+                                  </>
+                                )}
+                                {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3] transition-transform duration-200 scale-100" />}
                               </button>
 
                               <div>
@@ -368,6 +1161,14 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                                   >
                                     {task.title}
                                   </span>
+
+                                  {/* Celebratory Rooted badge during completion ripple */}
+                                  {isRippling && (
+                                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-[#20402E] bg-[#CEE6D7] px-2.5 py-0.5 rounded-full animate-bounce shadow-2xs">
+                                      <span>🌿</span>
+                                      <span>Grounded!</span>
+                                    </span>
+                                  )}
 
                                   {/* Priority Badge */}
                                   <span
@@ -396,21 +1197,75 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                               </div>
                             </div>
 
-                            {/* Right: Date pill & Scheduled time */}
-                            <div className="flex items-center gap-3 shrink-0 self-end sm:self-auto text-xs text-[#586B60]">
-                              {task.dueTime && (
-                                <span className="flex items-center gap-1 bg-[#FAF8F2] px-3 py-1 rounded-xl border border-[#EAE5D8]">
-                                  <Clock className="w-3.5 h-3.5 text-[#D98A6C]" />
-                                  <span>{task.dueTime}</span>
-                                </span>
-                              )}
-
-                              {task.dueDate && (
+                            {/* Right: Date pill & Edit / Delete Action Buttons */}
+                            <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto text-xs text-[#586B60]">
+                              {task.dueDate ? (
                                 <span className="flex items-center gap-1 bg-[#FAF8F2] px-3 py-1 rounded-xl border border-[#EAE5D8]">
                                   <CalendarIcon className="w-3.5 h-3.5 text-[#7C9A86]" />
                                   <span>{group.meta.formattedDate}</span>
                                 </span>
+                              ) : (
+                                <span className="flex items-center gap-1 bg-[#FAF8F2] px-2.5 py-1 rounded-xl border border-[#EAE5D8] text-[11px] text-[#7C9A86] font-medium">
+                                  <Sparkles className="w-3 h-3 text-[#D4A373]" />
+                                  <span>Anytime</span>
+                                </span>
                               )}
+
+                              {/* Action buttons: Do Today, Postpone (Tomorrow), Edit (Pencil) & Delete (Trash) */}
+                              <div className="flex items-center gap-1">
+                                {!isCompleted && !task.dueDate && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleMoveToToday(task.id);
+                                    }}
+                                    title="Schedule to Today"
+                                    className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-[#EAF0EC] hover:bg-[#1E3127] text-[#3B664B] hover:text-[#FAF7F0] border border-[#7C9A86]/30 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs"
+                                  >
+                                    <CalendarIcon className="w-3 h-3" />
+                                    <span>Do Today</span>
+                                  </button>
+                                )}
+
+                                {!isCompleted && task.dueDate && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePostponeToTomorrow(task.id, task.dueDate);
+                                    }}
+                                    title="Postpone to Tomorrow (+1 day)"
+                                    className="p-1.5 rounded-xl text-[#8E9E94] hover:text-[#C87452] hover:bg-[#F9ECE6] transition-all cursor-pointer"
+                                  >
+                                    <CalendarPlus className="w-4 h-4" />
+                                  </button>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenEdit(task);
+                                  }}
+                                  title="Edit intention"
+                                  className="p-1.5 rounded-xl text-[#8E9E94] hover:text-[#1E3127] hover:bg-[#EAF0EC] transition-all cursor-pointer"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDelete(task.id);
+                                  }}
+                                  title="Delete intention"
+                                  className="p-1.5 rounded-xl text-[#8E9E94] hover:text-[#D98A6C] hover:bg-[#F9ECE6] transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </div>
                           </div>
                         );
@@ -457,7 +1312,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
                     Category
@@ -471,8 +1326,8 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                     <option value="Body">Body</option>
                     <option value="Craft">Craft</option>
                     <option value="Spirit">Spirit</option>
-                    <option value="Study">Study (Education)</option>
-                    <option value="Career">Career (Job)</option>
+                    <option value="Study">Study</option>
+                    <option value="Career">Career</option>
                   </select>
                 </div>
 
@@ -493,28 +1348,35 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
-                    Due Date
-                  </label>
-                  <input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
-                    Time
-                  </label>
-                  <input
-                    type="text"
-                    value={dueTime}
-                    onChange={(e) => setDueTime(e.target.value)}
-                    placeholder="e.g. 6:00 PM"
-                    className="w-full px-3 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-[#586B60] uppercase tracking-wider">
+                      Due Date
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAnytime(!isAnytime)}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors cursor-pointer ${
+                        isAnytime
+                          ? "bg-[#7C9A86] text-white"
+                          : "bg-[#EFEAE0] text-[#586B60] hover:text-[#1A241E]"
+                      }`}
+                    >
+                      {isAnytime ? "Anytime ✓" : "Anytime?"}
+                    </button>
+                  </div>
+                  {isAnytime ? (
+                    <div className="w-full px-3 py-1.5 rounded-2xl border border-dashed border-[#7C9A86]/60 bg-[#FAFDFB] text-xs text-[#5F7E6A] flex items-center gap-1.5 font-medium">
+                      <Sparkles className="w-3.5 h-3.5 text-[#D4A373]" />
+                      <span>Anytime (No fixed date)</span>
+                    </div>
+                  ) : (
+                    <input
+                      type="date"
+                      value={dueDate}
+                      onChange={(e) => setDueDate(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -552,6 +1414,151 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                   className="px-5 py-2 rounded-2xl bg-[#1E3127] text-[#FAF7F0] font-medium text-sm hover:bg-[#2A3F34] transition-colors"
                 >
                   {isPending ? "Creating..." : "Save Intention"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {showEditModal && editingTask && (
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-[#FAF7F0] text-[#1A241E] rounded-3xl p-6 md:p-8 max-w-lg w-full border border-[#EAE5D8] shadow-xl">
+            <h4 className="font-serif text-2xl font-bold mb-4">Edit Daily Intention</h4>
+            <form onSubmit={handleUpdate} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
+                  Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Deep Focus Programming Session"
+                  value={editTitle}
+                  onChange={(e) => setEditTitle(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-2xl border border-[#EAE5D8] bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
+                  Description (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Details, sub-intentions, or notes..."
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  className="w-full px-4 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-sm focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
+                    Category
+                  </label>
+                  <select
+                    value={editCategory}
+                    onChange={(e) => setEditCategory(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
+                  >
+                    <option value="Mind">Mind</option>
+                    <option value="Body">Body</option>
+                    <option value="Craft">Craft</option>
+                    <option value="Spirit">Spirit</option>
+                    <option value="Study">Study</option>
+                    <option value="Career">Career</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
+                    Priority
+                  </label>
+                  <select
+                    value={editPriority}
+                    onChange={(e) => setEditPriority(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                    <option value="URGENT">Urgent</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-[#586B60] uppercase tracking-wider">
+                      Due Date
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setEditIsAnytime(!editIsAnytime)}
+                      className={`text-[10px] font-semibold px-2 py-0.5 rounded-full transition-colors cursor-pointer ${
+                        editIsAnytime
+                          ? "bg-[#7C9A86] text-white"
+                          : "bg-[#EFEAE0] text-[#586B60] hover:text-[#1A241E]"
+                      }`}
+                    >
+                      {editIsAnytime ? "Anytime ✓" : "Anytime?"}
+                    </button>
+                  </div>
+                  {editIsAnytime ? (
+                    <div className="w-full px-3 py-1.5 rounded-2xl border border-dashed border-[#7C9A86]/60 bg-[#FAFDFB] text-xs text-[#5F7E6A] flex items-center gap-1.5 font-medium">
+                      <Sparkles className="w-3.5 h-3.5 text-[#D4A373]" />
+                      <span>Anytime (No fixed date)</span>
+                    </div>
+                  ) : (
+                    <input
+                      type="date"
+                      value={editDueDate}
+                      onChange={(e) => setEditDueDate(e.target.value)}
+                      className="w-full px-3 py-1.5 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
+                    />
+                  )}
+                </div>
+              </div>
+
+              {goals.length > 0 && (
+                <div>
+                  <label className="block text-xs font-semibold text-[#586B60] mb-1 uppercase tracking-wider">
+                    Align with Long-Term Goal
+                  </label>
+                  <select
+                    value={editGoalId}
+                    onChange={(e) => setEditGoalId(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl border border-[#EAE5D8] bg-white text-xs"
+                  >
+                    <option value="">None (Independent Intention)</option>
+                    {goals.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#EAE5D8]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditModal(false);
+                    setEditingTask(null);
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-[#586B60] hover:text-[#1A241E]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-5 py-2 rounded-2xl bg-[#1E3127] text-[#FAF7F0] font-medium text-sm hover:bg-[#2A3F34] transition-colors"
+                >
+                  {isPending ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
