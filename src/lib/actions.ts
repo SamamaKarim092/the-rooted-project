@@ -9,19 +9,21 @@ export async function getDashboardData() {
 
   // Fetch today's tasks & recent tasks
   const tasks = await prisma.task.findMany({
-    orderBy: [{ status: "asc" }, { priority: "desc" }, { dueTime: "asc" }],
+    orderBy: [{ status: "asc" }, { priority: "desc" }],
     include: {
       goal: true,
       milestone: true,
     },
   });
+  tasks.sort((a, b) => ((a as any).order ?? 0) - ((b as any).order ?? 0));
 
-  // Fetch habits and their logs for past 14 days
+  // Fetch active habits and their logs for past 60 days (covers weekly & monthly retrospectives)
   const habits = await prisma.habit.findMany({
+    where: { status: "ACTIVE" },
     include: {
       logs: {
         orderBy: { date: "desc" },
-        take: 14,
+        take: 60,
       },
       goal: true,
     },
@@ -92,7 +94,7 @@ export async function getDashboardData() {
       title: habit.title,
       category: habit.category,
       color: habit.color,
-      currentStreak: Math.max(currentStreak, 1),
+      currentStreak: currentStreak,
       days,
     };
   });
@@ -117,9 +119,14 @@ export async function getDashboardData() {
     return {
       day: label,
       date: dateStr,
-      value: Math.min(Math.max(totalActivity * 12 + 20, 15), 95),
+      value: totalActivity > 0 ? Math.min(Math.max(totalActivity * 16 + 20, 20), 95) : 10,
     };
   });
+
+  const totalTodayItems = totalIntentions + habits.length;
+  const completedTodayItems = completedIntentions + completedHabitsCount;
+  const harmonyScore = totalTodayItems > 0 ? Math.round((completedTodayItems / totalTodayItems) * 100) : 0;
+  const rootedDays = habits.length > 0 ? Math.max(...habitMatrix.map((h) => h.currentStreak), 0) : 0;
 
   return {
     today,
@@ -129,10 +136,10 @@ export async function getDashboardData() {
     habitMatrix,
     activeGoal,
     metrics: {
-      harmonyScore: 91,
-      rootedDays: 24,
-      completedIntentions: completedIntentions || 5,
-      totalIntentions: totalIntentions || 7,
+      harmonyScore,
+      rootedDays,
+      completedIntentions: completedIntentions,
+      totalIntentions: totalIntentions,
     },
     weeklyFlow,
   };
@@ -195,27 +202,154 @@ export async function createTask(formData: {
   description?: string;
   priority?: string;
   category?: string;
-  dueDate?: string;
+  dueDate?: string | null;
   dueTime?: string;
   goalId?: string;
   milestoneId?: string;
 }) {
+  let newOrder = 0;
+  try {
+    const maxOrderResult: any = await prisma.$queryRawUnsafe(
+      `SELECT MAX("order") as maxOrder FROM Task`
+    );
+    newOrder = ((maxOrderResult?.[0]?.maxOrder as number) ?? -1) + 1;
+  } catch {
+    newOrder = 0;
+  }
+
   const task = await prisma.task.create({
     data: {
       title: formData.title,
       description: formData.description,
       priority: formData.priority || "MEDIUM",
       category: formData.category || "Craft",
-      dueDate: formData.dueDate || getTodayString(),
-      dueTime: formData.dueTime || "12:00 PM",
+      dueDate: formData.dueDate === undefined ? getTodayString() : (formData.dueDate || null),
+      dueTime: formData.dueTime || null,
       goalId: formData.goalId || null,
       milestoneId: formData.milestoneId || null,
     },
   });
 
+  try {
+    await prisma.$executeRawUnsafe(
+      `UPDATE Task SET "order" = ? WHERE id = ?`,
+      newOrder,
+      task.id
+    );
+  } catch (e) {
+    console.error("Could not set task order:", e);
+  }
+
   revalidatePath("/");
   revalidatePath("/tasks");
   return task;
+}
+
+export async function updateTask(
+  taskId: string,
+  formData: {
+    title: string;
+    description?: string;
+    priority?: string;
+    category?: string;
+    dueDate?: string;
+    goalId?: string | null;
+  }
+) {
+  const task = await prisma.task.update({
+    where: { id: taskId },
+    data: {
+      title: formData.title,
+      description: formData.description !== undefined ? formData.description : undefined,
+      priority: formData.priority || "MEDIUM",
+      category: formData.category || "Craft",
+      dueDate: formData.dueDate || null,
+      goalId: formData.goalId !== undefined ? formData.goalId : undefined,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/seasons");
+  return task;
+}
+
+export async function deleteTask(taskId: string) {
+  const task = await prisma.task.delete({ where: { id: taskId } });
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/seasons");
+  return task;
+}
+
+export async function rescheduleTask(taskId: string, newDueDate: string | null) {
+  const task = await prisma.task.update({
+    where: { id: taskId },
+    data: {
+      dueDate: newDueDate || null,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/seasons");
+  return task;
+}
+
+export async function rescheduleAllOverdueTasks(targetDate?: string) {
+  const today = targetDate || getTodayString();
+  const result = await prisma.task.updateMany({
+    where: {
+      status: "PENDING",
+      dueDate: {
+        lt: today,
+      },
+    },
+    data: {
+      dueDate: today,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/seasons");
+  return result;
+}
+
+export async function deleteAllTasks() {
+  const result = await prisma.task.deleteMany({});
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/seasons");
+  return result;
+}
+
+export async function reorderTasks(taskIds: string[]) {
+  try {
+    await prisma.$transaction(
+      taskIds.map((id, index) =>
+        prisma.task.update({
+          where: { id },
+          data: { order: index },
+        })
+      )
+    );
+  } catch (e) {
+    console.error("Could not update task order via transaction, falling back:", e);
+    for (let i = 0; i < taskIds.length; i++) {
+      try {
+        await prisma.task.update({
+          where: { id: taskIds[i] },
+          data: { order: i },
+        });
+      } catch (err) {
+        console.error(`Failed to update order for task ${taskIds[i]}:`, err);
+      }
+    }
+  }
+  revalidatePath("/tasks");
+  revalidatePath("/");
+  revalidatePath("/seasons");
 }
 
 export async function createHabit(formData: {
@@ -243,7 +377,98 @@ export async function createHabit(formData: {
 
   revalidatePath("/");
   revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
   return habit;
+}
+
+export async function updateHabit(
+  habitId: string,
+  formData: {
+    title: string;
+    description?: string;
+    category?: string;
+    targetDaysPerWeek?: number;
+    targetValue?: number;
+    unit?: string;
+    color?: string;
+    goalId?: string | null;
+  }
+) {
+  const habit = await prisma.habit.update({
+    where: { id: habitId },
+    data: {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category || "Mind",
+      targetDaysPerWeek: formData.targetDaysPerWeek ?? 7,
+      targetValue: formData.targetValue ?? 1,
+      unit: formData.unit || "times",
+      color: formData.color || "#7C9A86",
+      goalId: formData.goalId !== undefined ? formData.goalId : undefined,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return habit;
+}
+
+export async function deleteHabit(habitId: string) {
+  const habit = await prisma.habit.delete({
+    where: { id: habitId },
+  });
+  revalidatePath("/");
+  revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return habit;
+}
+
+export async function graduateHabit(habitId: string, note?: string) {
+  const habit = await prisma.habit.update({
+    where: { id: habitId },
+    data: {
+      status: "COMPLETED",
+      completedAt: new Date(),
+      completionNote: note || null,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return habit;
+}
+
+export async function reopenHabit(habitId: string) {
+  const habit = await prisma.habit.update({
+    where: { id: habitId },
+    data: {
+      status: "ACTIVE",
+      completedAt: null,
+      completionNote: null,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return habit;
+}
+
+export async function deleteAllHabits() {
+  await prisma.habitLog.deleteMany({});
+  const result = await prisma.habit.deleteMany({});
+  revalidatePath("/");
+  revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return result;
 }
 
 export async function toggleMilestone(milestoneId: string) {
