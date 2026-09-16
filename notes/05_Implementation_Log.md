@@ -300,6 +300,68 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - **Verification**:
   - `npx tsc --noEmit`: 0 type errors.
 
+### Step 17: Mindful Sleep Tracking & Morning Check-in System
+- **Problem & Intent**:
+  - Sleep and rest are foundational to conscious energy, focus, and holistic harmony.
+  - When users open the application in the morning, they need a frictionless way to record when they went to sleep and when they woke up, have the system calculate their total sleep duration, and evaluate whether they underslept (sleep debt) or overslept against their personal target (e.g. 8.0 hours).
+- **Database Schema**:
+  - Added `model SleepLog` with `date`, `bedtime`, `wakeTime`, `durationMinutes`, `quality`, and `notes`.
+  - Added `model SleepSetting` with `targetHours` (default 8.0h).
+  - Pushed to SQLite via Prisma with clean migration.
+- **Backend & Server Actions (`src/lib/actions.ts`)**:
+  - `logSleep({ date, bedtime, wakeTime, quality?, notes? })`: Computes duration in minutes (accounting for midnight transitions), upserts record, and revalidates paths.
+  - `updateSleepTarget(targetHours: number)`: Updates daily target with boundaries (5.0h – 12.0h).
+  - `getSleepData()`: Structured retrieval of today's rest, target settings, and 60-day history.
+  - Updated `getDashboardData()` to return sleep payload.
+- **Sleep Arithmetic Engine (`src/lib/utils.ts`)**:
+  - `calculateSleepDuration(bedtime, wakeTime)`: Handles overnight midnight transitions seamlessly.
+  - `evaluateSleepTarget(durationMinutes, targetHours)`: Compares rest against target, yielding `Optimal Rest` (within $\pm 15$ mins), `+X Overslept`, or `-X Sleep Debt`.
+- **Frontend Components**:
+  - **Morning Sleep Check-in Dialog (`src/components/sleep/MorningSleepDialog.tsx`)**:
+    - Automatic popup on first morning session of the day when today's rest has not been logged.
+    - Quick presets for Bedtime and Wake time + custom inputs.
+    - Real-time calculated duration pill and target comparison gauge.
+    - Visual progress bar with target tick line (e.g. 8h marker).
+    - 4 rest quality pills (`🌿 Restful`, `✨ Balanced`, `⚡ Restless`, `😴 Groggy`) and optional notes.
+    - Single-click "Save Rest Record" and "Remind Me Later" (suppresses auto-popup for the day).
+  - **Sleep Sanctuary Multi-Horizon Overview (`src/components/sleep/SleepRhythmOverview.tsx`)**:
+    - Integrated as the third tab (`[Sleep]`) on the main Dashboard.
+    - **Today's Rest Card**: Displays bedtime, wake time, duration, target fulfillment %, quality, and notes.
+    - **Target Sleep Customizer**: Interactive `-0.5h` / `+0.5h` buttons to adjust daily sleep target dynamically.
+    - **This Week's Rest Rhythm (Monday–Sunday)**: 7-day bar chart with dashed 8h target guideline, weekly average rest, adherence %, and net sleep debt/surplus.
+    - **Monthly Horizon & Retrospectives**: Month selector, monthly average, target adherence %, total hours, and full night-by-night log archive.
+  - **Dashboard Integration (`src/components/dashboard/DashboardMainView.tsx`)**:
+    - Tri-tab switcher: `[Journal]`, `[Task]`, and `[Sleep]`.
+    - `[ 🌙 Log Sleep ]` / `[ 🌙 Edit Rest ]` header button for on-demand manual access.
+- **Multi-Month Data Seed**:
+  - Seeded August (31 days) and September 2026 sleep logs in `prisma/seed.ts` with realistic rest distributions.
+- **UI Repositioning & Polish**:
+  - Repositioned the **Morning Reset Banner** on `/tasks` from between the filter tabs and quick-add bar to the **very top of the page** (above the header title and Today Clock Dial), keeping the filter row and quick-add input cleanly connected.
+  - Eliminated the bottom horizontal scrollbar under the status tabs (`TODAY`, `UPCOMING`, `ANYTIME`, `COMPLETED`, `OVERDUE`, `ALL`) via the `.no-scrollbar` utility.
+  - Moved the `ALL`, `Mind`, `Body`, `Craft`, `Spirit`, `Study`, `Career` category pills off the main bar and directly into the **Filter & Order** dropdown.
+  - Redesigned the **Filter & Order** popover to be minimal, simple, and compact with concise pill selectors for Category, Sort Order, Priority, and Goal Alignment.
+- **Documentation**:
+  - Created `notes/07_Sleep_Tracking_and_Rest_Rhythm.md`.
+- **Verification**:
+  - `npx tsc --noEmit`: 0 errors.
+  - `npm run build`: Production build verified with all 7 App Router routes compiling cleanly.
+
+### [Step 16] - Field Notes Page & Editor System (`/notes`)
+- **Prisma Schema**:
+  - Added `Note` model in `prisma/schema.prisma` with `id`, `title`, `content`, `category`, `isPinned`, `color`, `createdAt`, `updatedAt`.
+  - Safely synchronized database schema via `prisma db push` and generated Prisma client.
+- **Server Actions (`src/lib/actions.ts`)**:
+  - Implemented `getNotes()`, `createNote()`, `updateNote()`, `deleteNote()`, and `togglePinNote()` with path revalidation on `/notes`.
+- **User Interface (`src/app/notes/page.tsx` & `NotesClient.tsx`)**:
+  - Built a master-detail dual-pane interface:
+    - **Left Explorer**: Real-time search, category filters (`Mind`, `Body`, `Craft`, `Spirit`, `Study`, `Career`, `General`), pinned notes section, relative timestamps.
+    - **Right Editor**: Large editorial serif heading input, spacious description textarea, category selector, pin toggle, live word & character counters, delete confirmation modal, and primary "Save Note" button with instant visual feedback.
+    - **Keyboard Shortcut**: `Ctrl+S` / `Cmd+S` for quick saving.
+- **Navigation (`src/components/layout/Sidebar.tsx`)**:
+  - Added `Notes` link with `NotebookPen` icon to the primary sidebar.
+- **Documentation**:
+  - Created `notes/08_Field_Notes_System.md` and updated `notes/00_Index.md`.
+
 ---
 
 ## 📌 Current Status & Next Actions
@@ -328,7 +390,9 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - [x] Habit Graduation & Mastered Rituals Archive (Learning sprints, lifetime stats, reflection notes, plant next habit)
 - [x] Anytime Intentions (Dedicated ANYTIME tab, undated tasks, 1-click Do Today promotion, inline capture)
 - [x] Periodic Rhythm Retrospective Dialogs (Automated Weekly on Monday/first open & Monthly on 1st/new month open)
+- [x] Mindful Sleep Tracking & Morning Check-in System (Auto-popup, target customizer, weekly & monthly sleep rhythms)
 - [ ] User review and feedback
+
 
 
 
