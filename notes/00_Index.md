@@ -36,6 +36,12 @@ These notes explain in simple, clear, and comprehensive English how this applica
 6. **[[06_Monthly_Tracking_and_Reviews]]**
    - How month-by-month tracking, task archiving, and consistency reviews work in Seasons and Growth.
 
+7. **[[07_Sleep_Tracking_and_Rest_Rhythm]]**
+   - Morning sleep check-in dialog, bedtime/wake arithmetic, daily target bar, overslept/deficit tracking, and weekly/monthly sleep rhythms.
+
+8. **[[08_Field_Notes_System]]**
+   - Master-detail note-taking canvas, heading & description editor, category badges, pin management, and real-time search.
+
 ---
 
 ## 📌 Guiding Rule for AI Agents & Developers
