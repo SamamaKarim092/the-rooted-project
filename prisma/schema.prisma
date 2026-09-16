@@ -84,3 +84,37 @@ model Task {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 }
+
+model SleepLog {
+  id              String   @id @default(cuid())
+  date            String   // "YYYY-MM-DD" representing morning / wake-up day
+  bedtime         String   // e.g. "23:00" or "11:00 PM"
+  wakeTime        String   // e.g. "07:30" or "07:30 AM"
+  durationMinutes Int      // Total minutes slept (e.g. 510 = 8h 30m)
+  quality         String?  // "RESTFUL", "BALANCED", "LIGHT", "RESTLESS"
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([date])
+}
+
+model SleepSetting {
+  id          String   @id @default("default")
+  targetHours Float    @default(8.0) // Target sleep duration in hours (e.g. 8.0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  title     String   @default("Untitled Note")
+  content   String   @default("")
+  category  String   @default("General") // Mind, Body, Craft, Spirit, Study, Career, General
+  isPinned  Boolean  @default(false)
+  color     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+
