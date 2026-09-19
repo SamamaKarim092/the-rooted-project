@@ -118,12 +118,13 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
   const [priorityFilter, setPriorityFilter] = useState<string>("ALL");
   const [goalFilter, setGoalFilter] = useState<"ALL" | "WITH_GOAL" | "INDEPENDENT">("ALL");
 
-  const isFilterActive = sortBy !== "CUSTOM" || priorityFilter !== "ALL" || goalFilter !== "ALL";
+  const isFilterActive = sortBy !== "CUSTOM" || priorityFilter !== "ALL" || goalFilter !== "ALL" || selectedCategory !== "ALL";
 
   const handleResetFilters = () => {
     setSortBy("CUSTOM");
     setPriorityFilter("ALL");
     setGoalFilter("ALL");
+    setSelectedCategory("ALL");
   };
 
   // Inline Quick-Add State
@@ -622,281 +623,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-[#1A241E]">
-            Daily Intentions & Tasks
-          </h2>
-          <p className="text-sm text-[#586B60] mt-1 font-sans">
-            Grounded execution connecting daily responsibilities with long-term aspirations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-4 flex-wrap self-start lg:self-auto">
-          {/* Clock-type Organic Counter for Today */}
-          <TodayClockDial tasks={tasks} today={today} />
-
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#1E3127] hover:bg-[#2A3F34] text-[#FAF7F0] font-medium text-sm transition-all shadow-xs shrink-0"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Intention</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filter Tabs & Category Filter */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE5D8] pb-4">
-        {/* Main Status Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-          {(["TODAY", "UPCOMING", "ANYTIME", "COMPLETED", "OVERDUE", "ALL"] as const).map((tab) => {
-            let count: number | null = null;
-            if (tab === "TODAY") count = todayCount;
-            else if (tab === "UPCOMING") count = upcomingCount;
-            else if (tab === "ANYTIME") count = anytimeCount;
-            else if (tab === "OVERDUE") count = overdueCount;
-
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${
-                  activeTab === tab
-                    ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
-                    : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
-                }`}
-              >
-                <span>{tab.toLowerCase()}</span>
-                {count !== null && count > 0 && (
-                  <span
-                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
-                      activeTab === tab
-                        ? "bg-[#2A3F34] text-[#FAF7F0]"
-                        : "bg-[#EFEAE0] text-[#586B60]"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Right side: Category Pills + Filter & Order Popover */}
-        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-          {/* Category Pills */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-            {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                  selectedCategory === cat
-                    ? "bg-[#D4A373] text-white"
-                    : "bg-[#EFEAE0] text-[#586B60] hover:text-[#1A241E]"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Filter & Order Popover Button */}
-          <div className="relative shrink-0">
-            <button
-              onClick={() => setShowFilterMenu((prev) => !prev)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-2xl border text-xs font-semibold tracking-wide transition-all shadow-2xs ${
-                isFilterActive
-                  ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127]"
-                  : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border-[#EAE5D8] hover:border-[#7C9A86]/50"
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Filter &amp; Order</span>
-              {isFilterActive && (
-                <span className="w-2 h-2 rounded-full bg-[#D98A6C] animate-pulse" />
-              )}
-            </button>
-
-            {/* Filter & Order Dropdown Modal */}
-            {showFilterMenu && (
-              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 z-40 bg-[#FAF7F0] border border-[#EAE5D8] rounded-3xl p-5 shadow-xl text-[#1A241E]">
-                {/* Popover Header */}
-                <div className="flex items-center justify-between pb-3 border-b border-[#EAE5D8]">
-                  <div className="flex items-center gap-2">
-                    <SlidersHorizontal className="w-4 h-4 text-[#7C9A86]" />
-                    <span className="font-serif text-base font-bold text-[#1A241E]">
-                      Filter &amp; Order
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {isFilterActive && (
-                      <button
-                        type="button"
-                        onClick={handleResetFilters}
-                        className="flex items-center gap-1 text-[11px] font-semibold text-[#C87452] hover:text-[#D98A6C] transition-colors"
-                      >
-                        <RotateCcw className="w-3 h-3" />
-                        <span>Reset</span>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setShowFilterMenu(false)}
-                      className="p-1 rounded-full text-[#8E9E94] hover:text-[#1A241E] hover:bg-[#EAE5D8]/50 transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Section 1: Order / Sequence */}
-                <div className="py-3.5 border-b border-[#EAE5D8] space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-[#586B60]">
-                    <ArrowDownUp className="w-3.5 h-3.5 text-[#D4A373]" />
-                    <span>Order Intentions</span>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    {[
-                      {
-                        key: "NEWEST",
-                        title: "Last entered on top (Top - Bottom)",
-                        subtitle: "Newest created intentions first",
-                      },
-                      {
-                        key: "OLDEST",
-                        title: "Last entered on bottom (Bottom - Top)",
-                        subtitle: "Oldest created intentions first",
-                      },
-                      {
-                        key: "CUSTOM",
-                        title: "Custom manual rhythm",
-                        subtitle: "Organize freely with drag & drop handle",
-                      },
-                      {
-                        key: "PRIORITY_DESC",
-                        title: "Priority (Urgent → Low)",
-                        subtitle: "Highest priority intentions first",
-                      },
-                      {
-                        key: "DATE_ASC",
-                        title: "Due Date (Earliest → Latest)",
-                        subtitle: "Imminent deadlines first",
-                      },
-                    ].map((opt) => {
-                      const isSelected = sortBy === opt.key;
-                      return (
-                        <button
-                          key={opt.key}
-                          type="button"
-                          onClick={() => setSortBy(opt.key as any)}
-                          className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-start justify-between gap-2 ${
-                            isSelected
-                              ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127]"
-                              : "bg-white text-[#1A241E] border-[#EAE5D8] hover:border-[#7C9A86]/50"
-                          }`}
-                        >
-                          <div>
-                            <p className="text-xs font-bold leading-tight">{opt.title}</p>
-                            <p
-                              className={`text-[10px] mt-0.5 ${
-                                isSelected ? "text-[#D1C9BD]" : "text-[#8E9E94]"
-                              }`}
-                            >
-                              {opt.subtitle}
-                            </p>
-                          </div>
-                          {isSelected && <Check className="w-4 h-4 text-[#FAF7F0] shrink-0 mt-0.5" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Section 2: Priority Filter */}
-                <div className="py-3.5 border-b border-[#EAE5D8] space-y-2">
-                  <span className="block text-xs font-bold uppercase tracking-wider text-[#586B60]">
-                    Filter by Priority
-                  </span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {["ALL", "URGENT", "HIGH", "MEDIUM", "LOW"].map((p) => {
-                      const isSelected = priorityFilter === p;
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPriorityFilter(p)}
-                          className={`px-3 py-1 rounded-xl text-xs font-semibold tracking-wider transition-all ${
-                            isSelected
-                              ? "bg-[#7C9A86] text-white shadow-2xs"
-                              : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Section 3: Goal Alignment Filter */}
-                {goals.length > 0 && (
-                  <div className="py-3.5 border-b border-[#EAE5D8] space-y-2">
-                    <span className="block text-xs font-bold uppercase tracking-wider text-[#586B60]">
-                      Filter by Goal
-                    </span>
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {[
-                        { key: "ALL", label: "All Intentions" },
-                        { key: "WITH_GOAL", label: "Linked to Goal" },
-                        { key: "INDEPENDENT", label: "Independent Only" },
-                      ].map((g) => {
-                        const isSelected = goalFilter === g.key;
-                        return (
-                          <button
-                            key={g.key}
-                            type="button"
-                            onClick={() => setGoalFilter(g.key as any)}
-                            className={`px-3 py-1 rounded-xl text-xs font-medium transition-all ${
-                              isSelected
-                                ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
-                                : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
-                            }`}
-                          >
-                            {g.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Popover Footer */}
-                <div className="pt-4 flex items-center justify-between">
-                  <span className="text-[11px] text-[#8E9E94]">
-                    {isFilterActive ? "Custom filter active" : "Default order active"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setShowFilterMenu(false)}
-                    className="px-4 py-1.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-colors"
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-
-      {/* Morning Reset: Reschedule All Overdue to Today Banner */}
+      {/* Morning Reset: Reschedule All Overdue to Today Banner (At very top of the page) */}
       {overdueTasks.length > 0 && !dismissedOverdueBanner && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-[#FAF6EE] border border-[#EADFC7] shadow-xs text-xs text-[#1A241E] animate-in fade-in duration-300">
           <div className="flex items-center gap-3">
@@ -933,6 +660,260 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
           </div>
         </div>
       )}
+
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-[#1A241E]">
+            Daily Intentions & Tasks
+          </h2>
+          <p className="text-sm text-[#586B60] mt-1 font-sans">
+            Grounded execution connecting daily responsibilities with long-term aspirations.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-4 flex-wrap self-start lg:self-auto">
+          {/* Clock-type Organic Counter for Today */}
+          <TodayClockDial tasks={tasks} today={today} />
+
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#1E3127] hover:bg-[#2A3F34] text-[#FAF7F0] font-medium text-sm transition-all shadow-xs shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>New Intention</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filter Tabs Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#EAE5D8] pb-4">
+        {/* Main Status Tabs (Scrollbar hidden) */}
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden py-0.5">
+          {(["TODAY", "UPCOMING", "ANYTIME", "COMPLETED", "OVERDUE", "ALL"] as const).map((tab) => {
+            let count: number | null = null;
+            if (tab === "TODAY") count = todayCount;
+            else if (tab === "UPCOMING") count = upcomingCount;
+            else if (tab === "ANYTIME") count = anytimeCount;
+            else if (tab === "OVERDUE") count = overdueCount;
+
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap cursor-pointer ${
+                  activeTab === tab
+                    ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                    : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
+                }`}
+              >
+                <span>{tab.toLowerCase()}</span>
+                {count !== null && count > 0 && (
+                  <span
+                    className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold leading-none ${
+                      activeTab === tab
+                        ? "bg-[#2A3F34] text-[#FAF7F0]"
+                        : "bg-[#EFEAE0] text-[#586B60]"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right side: Filter & Order Popover Button */}
+        <div className="relative shrink-0 self-end sm:self-auto">
+          <button
+            onClick={() => setShowFilterMenu((prev) => !prev)}
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-xs font-semibold tracking-wide transition-all shadow-2xs cursor-pointer ${
+              isFilterActive
+                ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127]"
+                : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border-[#EAE5D8] hover:border-[#7C9A86]/50"
+            }`}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Filter &amp; Order</span>
+            {selectedCategory !== "ALL" && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D4A373] text-white">
+                {selectedCategory}
+              </span>
+            )}
+            {isFilterActive && selectedCategory === "ALL" && (
+              <span className="w-2 h-2 rounded-full bg-[#D98A6C] animate-pulse" />
+            )}
+          </button>
+
+          {/* Minimal, Clean Filter & Order Dropdown Modal */}
+          {showFilterMenu && (
+            <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 z-40 bg-[#FAF7F0] border border-[#EAE5D8] rounded-3xl p-4 sm:p-5 shadow-xl text-[#1A241E] space-y-4 animate-in fade-in duration-150">
+              {/* Popover Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-[#EAE5D8]">
+                <div className="flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-[#7C9A86]" />
+                  <span className="font-serif text-base font-bold text-[#1A241E]">
+                    Filter &amp; Order
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {isFilterActive && (
+                    <button
+                      type="button"
+                      onClick={handleResetFilters}
+                      className="flex items-center gap-1 text-[11px] font-semibold text-[#C87452] hover:text-[#D98A6C] transition-colors cursor-pointer"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                      <span>Reset</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowFilterMenu(false)}
+                    className="p-1 rounded-full text-[#8E9E94] hover:text-[#1A241E] hover:bg-[#EAE5D8]/50 transition-colors cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Section 1: Categories */}
+              <div className="space-y-2">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  Category
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => {
+                    const isSelected = selectedCategory === cat;
+                    return (
+                      <button
+                        key={cat}
+                        type="button"
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-[#D4A373] text-white shadow-2xs"
+                            : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                        }`}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 2: Sort Order */}
+              <div className="space-y-2 pt-2 border-t border-[#EAE5D8]">
+                <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  <ArrowDownUp className="w-3 h-3 text-[#D4A373]" />
+                  <span>Sort Order</span>
+                </div>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { key: "CUSTOM", label: "Custom Rhythm" },
+                    { key: "NEWEST", label: "Newest First" },
+                    { key: "OLDEST", label: "Oldest First" },
+                    { key: "PRIORITY_DESC", label: "Priority" },
+                    { key: "DATE_ASC", label: "Due Date" },
+                  ].map((opt) => {
+                    const isSelected = sortBy === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setSortBy(opt.key as any)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                            : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 3: Priority Filter */}
+              <div className="space-y-2 pt-2 border-t border-[#EAE5D8]">
+                <span className="block text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  Priority
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {["ALL", "URGENT", "HIGH", "MEDIUM", "LOW"].map((p) => {
+                    const isSelected = priorityFilter === p;
+                    return (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setPriorityFilter(p)}
+                        className={`px-3 py-1 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-[#7C9A86] text-white shadow-2xs"
+                            : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                        }`}
+                      >
+                        {p.toLowerCase()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section 4: Goal Alignment Filter */}
+              {goals.length > 0 && (
+                <div className="space-y-2 pt-2 border-t border-[#EAE5D8]">
+                  <span className="block text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                    Goal Alignment
+                  </span>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { key: "ALL", label: "All" },
+                      { key: "WITH_GOAL", label: "Linked to Goal" },
+                      { key: "INDEPENDENT", label: "Independent" },
+                    ].map((g) => {
+                      const isSelected = goalFilter === g.key;
+                      return (
+                        <button
+                          key={g.key}
+                          type="button"
+                          onClick={() => setGoalFilter(g.key as any)}
+                          className={`px-3 py-1 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                            isSelected
+                              ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                              : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                          }`}
+                        >
+                          {g.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Popover Footer */}
+              <div className="pt-3 border-t border-[#EAE5D8] flex items-center justify-between">
+                <span className="text-[11px] text-[#8E9E94]">
+                  {isFilterActive ? "Custom filter active" : "Default view"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowFilterMenu(false)}
+                  className="px-4 py-1.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
 
       {/* Inline Quick-Add Intention Input (Speed of Capture) */}
       <form
