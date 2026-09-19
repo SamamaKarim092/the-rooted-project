@@ -26,22 +26,30 @@ Right from the home screen, users can click the **`Task`** tab to access the **M
 - Category breakdown pills showing completed count per category (`Mind`, `Body`, `Craft`, `Spirit`, `Study`, `Career`).
 - Scrollable list of all tasks scheduled in the selected month.
 
-### 1. Seasons (`/seasons` - Calendar & Monthly Retrospectives)
-The **Seasons** view now features two dedicated modes:
-- **`Day-by-Day Calendar`**:
-  - Month calendar grid with activity dots.
-  - Clicking any specific date allows inspecting exact tasks and habits completed vs missed on that day.
-- **`Monthly Reflection & Archive`**:
-  - When viewing any month (e.g., **August 2026** or **September 2026**), Rooted calculates a complete monthly scoreboard:
-    - **Monthly Harmony Rate**: An aggregate consistency score (e.g. `82%` in August, `91%` in September) combining habit consistency (70% weight) and task completion (30% weight).
-    - **Tasks Finished**: Total tasks completed vs scheduled for that month (e.g., `8 of 10 tasks completed • 80%`).
-    - **Habit Check-Ins**: Total successful habit check-ins recorded in that month (e.g. `148 check-ins`).
-    - **Anchor Habit**: The top-performing habit of that month (e.g. Morning Deep Work at `96%`).
-    - **Growth Focus**: The habit needing attention (e.g. Movement & Stretching at `68%`).
-  - **Full Monthly Tasks Log**:
-    - A dedicated scrollable archive of every task due in that month with its status (Completed vs Pending), category pill, and scheduled due date.
-  - **Monthly Habit Adherence Ladder**:
-    - Progress bars showing exact completion percentages for all 6 habits across that calendar month.
+### 1. Seasons (`/seasons` - Calendar & Panoramic Retrospective Observatory)
+The **Seasons** view functions as a **strict read-only retrospective lens** (no creation or deletion) for viewing long-term progress across months and quarters. It provides two specialized lenses:
+
+- **`Habit Consistency Lens` (Habit Row & Tick/Cross Calendar)**:
+  - **Habit Constellation Row**: Displays all active habits entered in the system in responsive cards showing their title, category pill, check-in count, and monthly adherence rate.
+  - **Click-to-Inspect Drilldown**: Clicking any habit immediately updates the dedicated monthly calendar view for that specific habit.
+  - **Tick & Cross Daily Calendar**:
+    - **✓ (Tick / Sage Green)**: Days where the habit was successfully completed.
+    - **✗ (Cross / Terracotta Clay)**: Past days where the habit was missed or not logged.
+    - **Today Indicator**: Golden halo with real-time pending or completed status.
+    - **— (Upcoming)**: Neutral indicator for future days without penalty.
+  - **Habit Scorecard**: Real-time adherence %, total honored days (✓), and missed days (✗).
+
+- **`Task Execution Lens` (Seasonal Scoreboard & Weekly Accomplishment Log)**:
+  - **Monthly Execution Velocity Scoreboard**:
+    - Monthly Intentions count.
+    - Overall Execution Velocity (% completed).
+    - Critical High & Urgent priority execution rate.
+    - Carried over / pending count.
+  - **Weekly Accomplishment Breakdown**:
+    - Tasks grouped by weeks: **Week 1 (Days 1–7)**, **Week 2 (Days 8–14)**, **Week 3 (Days 15–21)**, and **Week 4 & Beyond (Days 22–End)**.
+    - Each week card highlights its completion rate (e.g. `86%`) and lists tasks with priority badges, categories, scheduled times, and completed checkmarks vs pending badges.
+  - **Search & Filtering**: Search bar, status filters (`All`, `Completed`, `Pending`), and category pills (`Mind`, `Body`, `Craft`, etc.).
+  - **Unified Month Navigator**: Previous/next month stepping, quick jump shortcuts (e.g. `August 2026`, `September 2026`, and `Back to Current Month`).
 
 ---
 
