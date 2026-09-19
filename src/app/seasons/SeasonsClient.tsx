@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { 
   Calendar as CalendarIcon, 
   ChevronLeft, 
@@ -15,7 +15,14 @@ import {
   Trophy, 
   TrendingUp, 
   AlertCircle,
-  CalendarDays
+  CalendarDays,
+  CheckCircle2,
+  ListFilter,
+  Search,
+  CheckSquare,
+  Tag,
+  CircleDot,
+  RotateCcw
 } from "lucide-react";
 
 interface HabitLog {
@@ -27,7 +34,9 @@ interface HabitLog {
 interface Habit {
   id: string;
   title: string;
+  description?: string | null;
   category: string;
+  targetDaysPerWeek?: number;
   logs: HabitLog[];
 }
 
@@ -49,13 +58,32 @@ interface SeasonsClientProps {
 }
 
 export function SeasonsClient({ tasks, habits, today }: SeasonsClientProps) {
-  const [selectedDate, setSelectedDate] = useState<string>(today);
-  const [viewMode, setViewMode] = useState<"DAILY" | "MONTHLY">("DAILY");
+  // Lens Switcher: "HABITS" (Habit Consistency Lens) | "TASKS" (Task Execution Lens)
+  const [activeLens, setActiveLens] = useState<"HABITS" | "TASKS">("HABITS");
 
-  // Parse current view month
-  const todayDateObj = new Date();
-  const [currentMonth, setCurrentMonth] = useState(todayDateObj.getMonth()); // 8 is Sep, 7 is Aug
-  const [currentYear, setCurrentYear] = useState(todayDateObj.getFullYear());
+  // Selected Habit for the calendar view (defaults to first habit)
+  const [selectedHabitId, setSelectedHabitId] = useState<string>(
+    habits.length > 0 ? habits[0].id : ""
+  );
+
+  // Month navigation
+  const [todayYear, todayMonth] = useMemo(() => {
+    const parts = today.split("-");
+    if (parts.length >= 2) {
+      return [parseInt(parts[0], 10), parseInt(parts[1], 10) - 1];
+    }
+    const d = new Date();
+    return [d.getFullYear(), d.getMonth()];
+  }, [today]);
+
+  const [currentMonth, setCurrentMonth] = useState<number>(todayMonth);
+  const [currentYear, setCurrentYear] = useState<number>(todayYear);
+
+  // Task Lens filters
+  const [taskStatusFilter, setTaskStatusFilter] = useState<"ALL" | "COMPLETED" | "PENDING">("ALL");
+  const [taskCategoryFilter, setTaskCategoryFilter] = useState<string>("ALL");
+  const [taskSearchQuery, setTaskSearchQuery] = useState<string>("");
+  const [selectedDateForTasks, setSelectedDateForTasks] = useState<string | null>(null);
 
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
@@ -69,6 +97,7 @@ export function SeasonsClient({ tasks, habits, today }: SeasonsClientProps) {
     } else {
       setCurrentMonth((m) => m - 1);
     }
+    setSelectedDateForTasks(null);
   };
 
   const handleNextMonth = () => {
@@ -78,12 +107,19 @@ export function SeasonsClient({ tasks, habits, today }: SeasonsClientProps) {
     } else {
       setCurrentMonth((m) => m + 1);
     }
+    setSelectedDateForTasks(null);
   };
 
-  // Build calendar matrix
-  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay(); // 0 is Sun
+  const handleJumpToTodayMonth = () => {
+    setCurrentMonth(todayMonth);
+    setCurrentYear(todayYear);
+    setSelectedDateForTasks(null);
+  };
+
+  // Calendar Geometry for Current Month
+  const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Sun
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const offset = (firstDayOfMonth + 6) % 7; // Align to Monday start
+  const offset = (firstDayOfMonth + 6) % 7; // Monday = 0
 
   const calendarDays: (string | null)[] = [];
   for (let i = 0; i < offset; i++) calendarDays.push(null);
@@ -92,74 +128,188 @@ export function SeasonsClient({ tasks, habits, today }: SeasonsClientProps) {
     calendarDays.push(formatted);
   }
 
-  // Monthly Calculations
   const monthPrefix = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}`;
   const currentMonthName = monthNames[currentMonth];
 
-  // Tasks in this month
-  const monthTasks = tasks.filter((t) => t.dueDate && t.dueDate.startsWith(monthPrefix));
-  const monthCompletedTasks = monthTasks.filter((t) => t.status === "COMPLETED");
+  // Currently Selected Habit
+  const selectedHabit = useMemo(() => {
+    return habits.find((h) => h.id === selectedHabitId) || habits[0] || null;
+  }, [habits, selectedHabitId]);
+
+  // Habit metrics calculation for the chosen habit in this month
+  const selectedHabitStats = useMemo(() => {
+    if (!selectedHabit) {
+      return {
+        completedDays: 0,
+        missedDays: 0,
+        upcomingDays: 0,
+        eligibleDays: 0,
+        consistencyRate: 0,
+      };
+    }
+
+    let completed = 0;
+    let missed = 0;
+    let upcoming = 0;
+    let eligible = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const log = selectedHabit.logs.find((l) => l.date === dateStr);
+      const isCompleted = log?.completed === true;
+
+      if (isCompleted) {
+        completed++;
+        if (dateStr <= today) eligible++;
+      } else if (dateStr < today) {
+        missed++;
+        eligible++;
+      } else if (dateStr === today) {
+        // Today and not completed yet
+        missed++;
+        eligible++;
+      } else {
+        // Future date
+        upcoming++;
+      }
+    }
+
+    const consistencyRate = eligible > 0 ? Math.round((completed / eligible) * 100) : 0;
+
+    return {
+      completedDays: completed,
+      missedDays: missed,
+      upcomingDays: upcoming,
+      eligibleDays: eligible,
+      consistencyRate,
+    };
+  }, [selectedHabit, currentYear, currentMonth, daysInMonth, today]);
+
+  // Overall Month Stats (All habits + tasks)
+  const monthAllHabitsStats = useMemo(() => {
+    return habits.map((h) => {
+      const monthLogs = h.logs.filter((l) => l.date.startsWith(monthPrefix));
+      const completed = monthLogs.filter((l) => l.completed).length;
+      
+      // Calculate eligible days up to today if viewing current month
+      const isCurrentMonthView = currentYear === todayYear && currentMonth === todayMonth;
+      const todayDateNum = parseInt(today.split("-")[2] || "1", 10);
+      const possibleDays = isCurrentMonthView 
+        ? Math.min(todayDateNum, daysInMonth)
+        : (currentYear < todayYear || (currentYear === todayYear && currentMonth < todayMonth) ? daysInMonth : 0);
+
+      const rate = possibleDays > 0 ? Math.min(Math.round((completed / possibleDays) * 100), 100) : (completed > 0 ? 100 : 0);
+
+      return {
+        id: h.id,
+        title: h.title,
+        category: h.category,
+        completedCount: completed,
+        rate,
+      };
+    });
+  }, [habits, monthPrefix, currentYear, currentMonth, todayYear, todayMonth, today, daysInMonth]);
+
+  const totalMonthlyHabitLogs = monthAllHabitsStats.reduce((acc, h) => acc + h.completedCount, 0);
+
+  // Month Tasks
+  const monthTasks = useMemo(() => {
+    return tasks.filter((t) => t.dueDate && t.dueDate.startsWith(monthPrefix));
+  }, [tasks, monthPrefix]);
+
+  const monthCompletedTasks = useMemo(() => {
+    return monthTasks.filter((t) => t.status === "COMPLETED");
+  }, [monthTasks]);
+
   const monthTaskRate = monthTasks.length > 0 
     ? Math.round((monthCompletedTasks.length / monthTasks.length) * 100) 
     : 100;
 
-  // Habit stats in this month
-  const daysInMonthCount = currentMonth === todayDateObj.getMonth() && currentYear === todayDateObj.getFullYear()
-    ? todayDateObj.getDate()
-    : daysInMonth;
+  // Filtered Tasks for the Tasks Lens
+  const filteredTasks = useMemo(() => {
+    return monthTasks.filter((t) => {
+      // Status filter
+      if (taskStatusFilter === "COMPLETED" && t.status !== "COMPLETED") return false;
+      if (taskStatusFilter === "PENDING" && t.status === "COMPLETED") return false;
 
-  const monthHabitStats = habits.map((h) => {
-    const logsInMonth = h.logs.filter((l) => l.date.startsWith(monthPrefix));
-    const completedCount = logsInMonth.filter((l) => l.completed).length;
-    const rate = Math.min(Math.round((completedCount / (daysInMonthCount || 1)) * 100), 100);
-    return {
-      id: h.id,
-      title: h.title,
-      category: h.category,
-      completedCount,
-      possibleDays: daysInMonthCount,
-      rate,
-    };
-  }).sort((a, b) => b.rate - a.rate);
+      // Category filter
+      if (taskCategoryFilter !== "ALL" && t.category.toLowerCase() !== taskCategoryFilter.toLowerCase()) {
+        return false;
+      }
 
-  const totalHabitCompletionsInMonth = monthHabitStats.reduce((acc, h) => acc + h.completedCount, 0);
-  const avgHabitRate = Math.round(
-    monthHabitStats.reduce((acc, h) => acc + h.rate, 0) / (monthHabitStats.length || 1)
-  );
-  const overallMonthlyHarmony = Math.round(
-    monthTasks.length > 0 ? (avgHabitRate * 0.7 + monthTaskRate * 0.3) : avgHabitRate
-  );
+      // Date filter
+      if (selectedDateForTasks && t.dueDate !== selectedDateForTasks) return false;
 
-  const bestHabit = monthHabitStats[0];
-  const weakestHabit = monthHabitStats[monthHabitStats.length - 1];
+      // Search query
+      if (taskSearchQuery.trim()) {
+        const query = taskSearchQuery.toLowerCase();
+        const matchesTitle = t.title.toLowerCase().includes(query);
+        const matchesDesc = t.description?.toLowerCase().includes(query) || false;
+        if (!matchesTitle && !matchesDesc) return false;
+      }
 
-  // Daily Retrospective Data
-  const dayHabits = habits.map((h) => {
-    const log = h.logs.find((l) => l.date === selectedDate);
-    return {
-      id: h.id,
-      title: h.title,
-      category: h.category,
-      isCompleted: log?.completed ?? false,
-    };
-  });
+      return true;
+    });
+  }, [monthTasks, taskStatusFilter, taskCategoryFilter, selectedDateForTasks, taskSearchQuery]);
 
-  const dayTasks = tasks.filter((t) => t.dueDate === selectedDate);
-  const completedHabits = dayHabits.filter((h) => h.isCompleted);
-  const completedTasks = dayTasks.filter((t) => t.status === "COMPLETED");
+  // Group filtered tasks into weekly intervals
+  const weeklyTaskGroups = useMemo(() => {
+    const groups: {
+      weekKey: string;
+      title: string;
+      dateRange: string;
+      tasks: Task[];
+      completedCount: number;
+    }[] = [
+      {
+        weekKey: "w1",
+        title: "Week 1",
+        dateRange: `${currentMonthName} 01 – 07`,
+        tasks: [],
+        completedCount: 0,
+      },
+      {
+        weekKey: "w2",
+        title: "Week 2",
+        dateRange: `${currentMonthName} 08 – 14`,
+        tasks: [],
+        completedCount: 0,
+      },
+      {
+        weekKey: "w3",
+        title: "Week 3",
+        dateRange: `${currentMonthName} 15 – 21`,
+        tasks: [],
+        completedCount: 0,
+      },
+      {
+        weekKey: "w4",
+        title: "Week 4 & Beyond",
+        dateRange: `${currentMonthName} 22 – ${daysInMonth}`,
+        tasks: [],
+        completedCount: 0,
+      },
+    ];
 
-  const totalPossible = dayHabits.length + (dayTasks.length || 1);
-  const totalCompleted = completedHabits.length + completedTasks.length;
-  const dayConsistency = Math.min(Math.round((totalCompleted / totalPossible) * 100), 100);
+    filteredTasks.forEach((t) => {
+      if (!t.dueDate) return;
+      const dayNum = parseInt(t.dueDate.split("-")[2], 10);
+      let targetGroupIdx = 3;
+      if (dayNum <= 7) targetGroupIdx = 0;
+      else if (dayNum <= 14) targetGroupIdx = 1;
+      else if (dayNum <= 21) targetGroupIdx = 2;
 
-  const selectedDateObj = new Date(selectedDate + "T00:00:00");
-  const humanDateStr = selectedDateObj.toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
+      groups[targetGroupIdx].tasks.push(t);
+      if (t.status === "COMPLETED") {
+        groups[targetGroupIdx].completedCount++;
+      }
+    });
 
+    // Return only groups that have tasks, or return all if none have tasks to show empty states gracefully
+    return groups;
+  }, [filteredTasks, currentMonthName, daysInMonth]);
+
+  // Category Badge Helper
   const getCategoryBadge = (cat: string) => {
     switch (cat.toLowerCase()) {
       case "mind":
@@ -178,96 +328,146 @@ export function SeasonsClient({ tasks, habits, today }: SeasonsClientProps) {
     }
   };
 
+  // Priority Badge Helper
+  const getPriorityBadge = (priority: string) => {
+    switch (priority.toUpperCase()) {
+      case "URGENT":
+        return "bg-[#FBE8E8] text-[#B83A3A] border border-[#E89E9E]";
+      case "HIGH":
+        return "bg-[#FDF0E7] text-[#C87452] border border-[#E9BBA6]";
+      case "MEDIUM":
+        return "bg-[#FAF8F2] text-[#8C7A5E] border border-[#DED7C8]";
+      case "LOW":
+      default:
+        return "bg-[#F2F4F2] text-[#6D7D72] border border-[#D1D9D3]";
+    }
+  };
+
+  const isCurrentViewingMonth = currentYear === todayYear && currentMonth === todayMonth;
+
   return (
-    <div className="space-y-8">
-      {/* Header & Mode Switcher */}
+    <div className="space-y-7 pb-12">
+      {/* 1. Page Header & Lens Switcher */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[#7C9A86]">
+              Seasonal Observatory
+            </span>
+            <span className="text-[#8E9E94]">•</span>
+            <span className="text-xs text-[#586B60]">
+              Retrospective & Progress Lens
+            </span>
+          </div>
           <h2 className="font-serif text-3xl md:text-4xl font-semibold tracking-tight text-[#1A241E]">
-            Seasons & Monthly Retrospectives
+            Seasons & Progress View
           </h2>
-          <p className="text-sm text-[#586B60] mt-1 font-sans">
-            Review your consistency across days, weeks, and full monthly seasons.
+          <p className="text-xs md:text-sm text-[#586B60] mt-1 font-sans max-w-2xl">
+            A high-level panoramic perspective. Inspect habits consistency day-by-day across months, and review seasonal task accomplishments.
           </p>
         </div>
 
-        {/* View Mode Switcher */}
-        <div className="flex items-center gap-2 bg-[#FFFFFF] p-1.5 rounded-2xl border border-[#EAE5D8] shadow-2xs self-start md:self-auto">
+        {/* Dual Lens Switcher (Habit Consistency Lens vs Task Execution Lens) */}
+        <div className="flex items-center gap-1.5 bg-[#FFFFFF] p-1.5 rounded-2xl border border-[#EAE5D8] shadow-2xs self-start md:self-auto shrink-0">
           <button
-            onClick={() => setViewMode("DAILY")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              viewMode === "DAILY"
+            onClick={() => setActiveLens("HABITS")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+              activeLens === "HABITS"
                 ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
-                : "text-[#586B60] hover:text-[#1A241E]"
+                : "text-[#586B60] hover:text-[#1A241E] hover:bg-[#FAF8F2]"
             }`}
           >
-            <CalendarDays className="w-4 h-4" />
-            <span>Day-by-Day Calendar</span>
+            <Flame className={`w-4 h-4 ${activeLens === "HABITS" ? "text-[#D4A373]" : "text-[#7C9A86]"}`} />
+            <span>Habit Consistency Lens</span>
           </button>
           <button
-            onClick={() => setViewMode("MONTHLY")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
-              viewMode === "MONTHLY"
+            onClick={() => setActiveLens("TASKS")}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 ${
+              activeLens === "TASKS"
                 ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
-                : "text-[#586B60] hover:text-[#1A241E]"
+                : "text-[#586B60] hover:text-[#1A241E] hover:bg-[#FAF8F2]"
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            <span>Monthly Reflection ({currentMonthName})</span>
+            <CheckSquare className={`w-4 h-4 ${activeLens === "TASKS" ? "text-[#D4A373]" : "text-[#7C9A86]"}`} />
+            <span>Task Execution Lens</span>
           </button>
         </div>
       </div>
 
-      {/* Month Navigator Header Bar */}
-      <div className="flex items-center justify-between p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-xs">
+      {/* 2. Unified Month Navigator Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-2xs">
         <div className="flex items-center gap-3">
           <button
             onClick={handlePrevMonth}
-            className="w-9 h-9 rounded-full bg-[#FAF8F2] hover:bg-[#EAE5D8] flex items-center justify-center transition-colors text-[#1A241E]"
+            className="w-9 h-9 rounded-full bg-[#FAF8F2] hover:bg-[#EAE5D8] flex items-center justify-center transition-colors text-[#1A241E] border border-[#EAE5D8]"
             title="Previous Month"
+            aria-label="Previous Month"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
+
           <div>
-            <h3 className="font-serif text-2xl font-bold text-[#1A241E] leading-tight">
-              {currentMonthName} {currentYear}
-            </h3>
-            <span className="text-xs text-[#586B60]">
-              {overallMonthlyHarmony}% Consistency across {monthTasks.length} tasks and {totalHabitCompletionsInMonth} habit check-ins
-            </span>
+            <div className="flex items-center gap-2">
+              <h3 className="font-serif text-2xl md:text-3xl font-bold text-[#1A241E] leading-tight">
+                {currentMonthName} {currentYear}
+              </h3>
+              {isCurrentViewingMonth && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#EAF0EC] text-[#5F7E6A] border border-[#7C9A86]/40">
+                  Current Season
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-[#586B60] mt-0.5">
+              {totalMonthlyHabitLogs} habit check-ins • {monthCompletedTasks.length} of {monthTasks.length} intentions achieved ({monthTaskRate}%)
+            </p>
           </div>
+
           <button
             onClick={handleNextMonth}
-            className="w-9 h-9 rounded-full bg-[#FAF8F2] hover:bg-[#EAE5D8] flex items-center justify-center transition-colors text-[#1A241E]"
+            className="w-9 h-9 rounded-full bg-[#FAF8F2] hover:bg-[#EAE5D8] flex items-center justify-center transition-colors text-[#1A241E] border border-[#EAE5D8]"
             title="Next Month"
+            aria-label="Next Month"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Quick Jump to August or September */}
-        <div className="flex items-center gap-2">
+        {/* Quick Month Shortcuts */}
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {!isCurrentViewingMonth && (
+            <button
+              onClick={handleJumpToTodayMonth}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[#FAF7F0] hover:bg-[#EAE5D8] text-[#1E3127] border border-[#D4A373]/50 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#D4A373]" />
+              <span>Back to Current Month</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               setCurrentMonth(7); // August
               setCurrentYear(2026);
+              setSelectedDateForTasks(null);
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
               currentMonth === 7 && currentYear === 2026
-                ? "bg-[#D4A373] text-white"
+                ? "bg-[#1E3127] text-[#FAF7F0]"
                 : "bg-[#FAF8F2] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
             }`}
           >
             August 2026
           </button>
+
           <button
             onClick={() => {
               setCurrentMonth(8); // September
               setCurrentYear(2026);
+              setSelectedDateForTasks(null);
             }}
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors ${
               currentMonth === 8 && currentYear === 2026
-                ? "bg-[#D4A373] text-white"
+                ? "bg-[#1E3127] text-[#FAF7F0]"
                 : "bg-[#FAF8F2] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
             }`}
           >
@@ -276,405 +476,644 @@ export function SeasonsClient({ tasks, habits, today }: SeasonsClientProps) {
         </div>
       </div>
 
-      {/* VIEW MODE 1: DAY-BY-DAY CALENDAR */}
-      {viewMode === "DAILY" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
-          {/* Calendar Grid (7 cols) */}
-          <div className="lg:col-span-7 bg-[#FFFFFF] rounded-3xl p-7 md:p-8 border border-[#EAE5D8] shadow-xs">
-            <div className="grid grid-cols-7 text-center text-xs font-semibold text-[#8E9E94] mb-3">
-              {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-                <span key={d}>{d}</span>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-7 gap-2">
-              {calendarDays.map((dateStr, idx) => {
-                if (!dateStr) return <div key={`empty-${idx}`} className="h-12" />;
-
-                const dayNum = parseInt(dateStr.split("-")[2], 10);
-                const isSelected = dateStr === selectedDate;
-                const isTodayDate = dateStr === today;
-
-                const doneCount = habits.filter((h) =>
-                  h.logs.some((l) => l.date === dateStr && l.completed)
-                ).length;
-
-                return (
-                  <button
-                    key={dateStr}
-                    onClick={() => setSelectedDate(dateStr)}
-                    className={`h-12 rounded-2xl flex flex-col items-center justify-center relative transition-all ${
-                      isSelected
-                        ? "bg-[#1E3127] text-[#FAF7F0] shadow-sm scale-105"
-                        : isTodayDate
-                        ? "bg-[#FAF7F0] border border-[#D4A373] text-[#1A241E]"
-                        : "hover:bg-[#FAF8F2] text-[#1A241E]"
-                    }`}
-                  >
-                    <span className="text-sm font-semibold">{dayNum}</span>
-                    {doneCount > 0 && (
-                      <div className="flex items-center gap-0.5 mt-0.5">
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            isSelected ? "bg-[#D4A373]" : "bg-[#7C9A86]"
-                          }`}
-                        />
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 pt-4 border-t border-[#EAE5D8] flex items-center justify-between text-xs text-[#586B60]">
+      {/* ========================================================================= */}
+      {/* LENS 1: HABIT CONSISTENCY LENS (User's primary requirement)               */}
+      {/* ========================================================================= */}
+      {activeLens === "HABITS" && (
+        <div className="space-y-6">
+          {/* Habits Row / Carousel */}
+          <div>
+            <div className="flex items-center justify-between mb-3 px-1">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-[#7C9A86]" />
-                <span>Days with completed habits & tasks</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-[#586B60]">
+                  Your Habit Constellation
+                </span>
+                <span className="text-[11px] text-[#8E9E94]">
+                  (Click any habit to inspect its monthly calendar)
+                </span>
               </div>
-              <button
-                onClick={() => setViewMode("MONTHLY")}
-                className="font-medium text-[#7C9A86] hover:text-[#1E3127] underline"
-              >
-                Switch to full {currentMonthName} summary →
-              </button>
+              <span className="text-xs font-medium text-[#7C9A86]">
+                {habits.length} Active Habits
+              </span>
             </div>
-          </div>
 
-          {/* Day Retrospective (5 cols) */}
-          <div className="lg:col-span-5 bg-[#FAF7F0] rounded-3xl p-7 md:p-8 border border-[#EAE5D8] shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between gap-4 pb-4 border-b border-[#EAE5D8]">
-                <div>
-                  <span className="text-xs font-semibold uppercase tracking-wider text-[#7C9A86]">
-                    Day Retrospective
-                  </span>
-                  <h3 className="font-serif text-2xl font-bold text-[#1A241E] mt-0.5">
-                    {humanDateStr}
-                  </h3>
-                </div>
-
-                <div className="flex flex-col items-center px-4 py-2 rounded-2xl bg-[#EFEAE0] border border-[#E4DDD0] shadow-2xs">
-                  <span className="font-serif text-lg font-bold text-[#1A241E]">
-                    {dayConsistency}%
-                  </span>
-                  <span className="text-[10px] uppercase font-bold text-[#586B60]">
-                    Harmony
-                  </span>
-                </div>
+            {habits.length === 0 ? (
+              <div className="p-8 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] text-center">
+                <Flame className="w-8 h-8 text-[#D98A6C] mx-auto mb-2 opacity-60" />
+                <p className="text-sm font-semibold text-[#1A241E]">No habits found</p>
+                <p className="text-xs text-[#8E9E94] mt-1">
+                  Create habits in the Habits page to review their seasonal calendar trajectory here.
+                </p>
               </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                {habits.map((habit) => {
+                  const isSelected = habit.id === (selectedHabit?.id || "");
+                  const stat = monthAllHabitsStats.find((s) => s.id === habit.id);
 
-              {/* Habits */}
-              <div className="mt-6">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#586B60] mb-3">
-                  Habits ({completedHabits.length} / {dayHabits.length} completed)
-                </h4>
-                <div className="space-y-2">
-                  {dayHabits.map((habit) => (
-                    <div
+                  return (
+                    <button
                       key={habit.id}
-                      className={`flex items-center justify-between p-3 rounded-2xl border text-sm ${
-                        habit.isCompleted
-                          ? "bg-[#FFFFFF] border-[#EAE5D8] text-[#1A241E]"
-                          : "bg-[#F5EFE6]/60 border-[#EAE5D8] text-[#8E9E94]"
+                      onClick={() => setSelectedHabitId(habit.id)}
+                      className={`text-left p-4 rounded-2xl transition-all duration-200 relative border flex flex-col justify-between ${
+                        isSelected
+                          ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127] shadow-md ring-2 ring-[#D4A373]/60 scale-[1.01]"
+                          : "bg-[#FFFFFF] hover:bg-[#FAF8F2] text-[#1A241E] border-[#EAE5D8] shadow-2xs hover:border-[#D4A373]/50"
                       }`}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div
-                          className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                            habit.isCompleted
-                              ? "bg-[#7C9A86] text-white"
-                              : "bg-[#EAE5D8] text-[#8E9E94]"
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
+                            isSelected
+                              ? "bg-[#2D4336] text-[#FAF7F0] border border-[#3E5C4B]"
+                              : getCategoryBadge(habit.category)
                           }`}
                         >
-                          {habit.isCompleted ? (
-                            <Check className="w-3 h-3 stroke-[3]" />
-                          ) : (
-                            <X className="w-3 h-3 stroke-[3]" />
-                          )}
-                        </div>
-                        <span className={habit.isCompleted ? "font-medium" : ""}>
-                          {habit.title}
+                          {habit.category}
                         </span>
-                      </div>
-                      <span className="text-xs text-[#586B60]">
-                        {habit.isCompleted ? "Completed" : "Rest / Missed"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
-              {/* Tasks */}
-              <div className="mt-6">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-[#586B60] mb-3">
-                  Tasks ({completedTasks.length} / {dayTasks.length || 0} completed)
-                </h4>
-                {dayTasks.length === 0 ? (
-                  <p className="text-xs text-[#8E9E94] italic p-3 rounded-2xl bg-[#FFFFFF] border border-[#EAE5D8]">
-                    No specific tasks were scheduled for this date.
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    {dayTasks.map((t) => (
-                      <div
-                        key={t.id}
-                        className="flex items-center justify-between p-3 rounded-2xl bg-[#FFFFFF] border border-[#EAE5D8] text-sm"
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-5 h-5 rounded-full flex items-center justify-center ${
-                              t.status === "COMPLETED"
-                                ? "bg-[#7C9A86] text-white"
-                                : "bg-[#EAE5D8] text-[#8E9E94]"
-                            }`}
-                          >
-                            {t.status === "COMPLETED" ? (
-                              <Check className="w-3 h-3 stroke-[3]" />
-                            ) : (
-                              <X className="w-3 h-3 stroke-[3]" />
-                            )}
-                          </div>
-                          <span
-                            className={
-                              t.status === "COMPLETED"
-                                ? "font-medium line-through text-[#8E9E94]"
-                                : "font-medium text-[#1A241E]"
-                            }
-                          >
-                            {t.title}
+                        {isSelected && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#D4A373] bg-[#2D4336] px-2 py-0.5 rounded-full">
+                            <CircleDot className="w-3 h-3 text-[#D4A373] fill-[#D4A373]" />
+                            <span>Viewing</span>
                           </span>
-                        </div>
-                        {t.dueTime && (
-                          <span className="text-xs text-[#586B60]">{t.dueTime}</span>
                         )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
 
-            <div className="mt-6 pt-4 border-t border-[#EAE5D8] text-xs text-[#586B60] flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#D98A6C]" />
-              <span>&ldquo;Reviewing past seasons illuminates the path forward.&rdquo;</span>
-            </div>
-          </div>
-        </div>
-      ) : (
-        /* VIEW MODE 2: FULL MONTHLY RETROSPECTIVE & BREAKDOWN */
-        <div className="space-y-7">
-          {/* Monthly Metric Scoreboard */}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-5">
-            {/* Harmony Rate */}
-            <div className="p-6 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-xs">
-              <div className="flex items-center justify-between text-[#7C9A86] mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#586B60]">
-                  {currentMonthName} Harmony
-                </span>
-                <TrendingUp className="w-4 h-4 text-[#7C9A86]" />
-              </div>
-              <div className="font-serif text-3xl font-bold text-[#1A241E]">
-                {overallMonthlyHarmony}%
-              </div>
-              <p className="text-xs text-[#586B60] mt-1">Overall monthly consistency</p>
-            </div>
+                      <div>
+                        <h4
+                          className={`font-serif text-base font-semibold leading-tight line-clamp-1 ${
+                            isSelected ? "text-[#FAF7F0]" : "text-[#1A241E]"
+                          }`}
+                        >
+                          {habit.title}
+                        </h4>
 
-            {/* Tasks Completed */}
-            <div className="p-6 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-xs">
-              <div className="flex items-center justify-between text-[#D98A6C] mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#586B60]">
-                  Tasks Finished
-                </span>
-                <Check className="w-4 h-4 text-[#D98A6C] stroke-[3]" />
-              </div>
-              <div className="font-serif text-3xl font-bold text-[#1A241E]">
-                {monthCompletedTasks.length} / {monthTasks.length}
-              </div>
-              <p className="text-xs text-[#586B60] mt-1">
-                {monthTaskRate}% of monthly intentions
-              </p>
-            </div>
-
-            {/* Habit Check-ins */}
-            <div className="p-6 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-xs">
-              <div className="flex items-center justify-between text-[#D4A373] mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#586B60]">
-                  Habit Check-Ins
-                </span>
-                <Flame className="w-4 h-4 text-[#D4A373] fill-[#D4A373]" />
-              </div>
-              <div className="font-serif text-3xl font-bold text-[#1A241E]">
-                {totalHabitCompletionsInMonth}
-              </div>
-              <p className="text-xs text-[#586B60] mt-1">Total completed logs in {currentMonthName}</p>
-            </div>
-
-            {/* Top Habit */}
-            <div className="p-6 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-xs">
-              <div className="flex items-center justify-between text-[#7C9A86] mb-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#586B60]">
-                  Anchor Habit
-                </span>
-                <Trophy className="w-4 h-4 text-[#7C9A86]" />
-              </div>
-              <div className="font-serif text-lg font-bold text-[#1A241E] truncate">
-                {bestHabit?.title || "Deep Work"}
-              </div>
-              <p className="text-xs text-[#5F7E6A] font-semibold mt-1">
-                {bestHabit?.rate}% consistency
-              </p>
-            </div>
-          </div>
-
-          {/* Monthly Deep Dive Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-7">
-            {/* Left: Tasks Done in this Month (6 cols) */}
-            <div className="lg:col-span-6 bg-[#FFFFFF] rounded-3xl p-7 md:p-8 border border-[#EAE5D8] shadow-xs">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <h4 className="font-serif text-2xl font-bold text-[#1A241E]">
-                    Tasks Completed in {currentMonthName}
-                  </h4>
-                  <p className="text-xs text-[#586B60] mt-0.5">
-                    What you accomplished and what remained pending in {currentMonthName} {currentYear}.
-                  </p>
-                </div>
-                <span className="px-3 py-1 rounded-full bg-[#EFEAE0] text-xs font-semibold text-[#1A241E]">
-                  {monthCompletedTasks.length} / {monthTasks.length} Done
-                </span>
-              </div>
-
-              {monthTasks.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#8E9E94]">
-                  No tasks recorded for {currentMonthName} {currentYear}.
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
-                  {monthTasks.map((t) => {
-                    const isDone = t.status === "COMPLETED";
-
-                    return (
-                      <div
-                        key={t.id}
-                        className={`p-4 rounded-2xl border transition-all ${
-                          isDone
-                            ? "bg-[#FAF8F2] border-[#EAE5D8]"
-                            : "bg-[#FFFFFF] border-[#D98A6C]/40 shadow-2xs"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex items-start gap-3 min-w-0">
-                            <div
-                              className={`w-5 h-5 rounded-full flex items-center justify-center mt-0.5 shrink-0 ${
-                                isDone ? "bg-[#7C9A86] text-white" : "bg-[#FAF8F2] border border-[#D98A6C] text-[#D98A6C]"
-                              }`}
-                            >
-                              {isDone ? (
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              ) : (
-                                <Clock className="w-3 h-3" />
-                              )}
-                            </div>
-                            <div>
-                              <span
-                                className={`text-sm font-medium ${
-                                  isDone ? "text-[#586B60] line-through" : "text-[#1A241E]"
-                                }`}
-                              >
-                                {t.title}
-                              </span>
-                              {t.description && (
-                                <p className="text-xs text-[#8E9E94] mt-1 line-clamp-2">
-                                  {t.description}
-                                </p>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex flex-col items-end shrink-0 gap-1">
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${getCategoryBadge(t.category)}`}>
-                              {t.category}
-                            </span>
-                            <span className="text-[11px] text-[#8E9E94]">
-                              {t.dueDate}
-                            </span>
-                          </div>
+                        <div className="flex items-center justify-between mt-3 pt-2 border-t border-dashed border-[#EAE5D8]/40">
+                          <span
+                            className={`text-xs ${
+                              isSelected ? "text-[#C1D1C7]" : "text-[#586B60]"
+                            }`}
+                          >
+                            {stat?.completedCount || 0} Check-ins
+                          </span>
+                          <span
+                            className={`font-serif text-sm font-bold ${
+                              isSelected ? "text-[#D4A373]" : "text-[#7C9A86]"
+                            }`}
+                          >
+                            {stat?.rate || 0}%
+                          </span>
                         </div>
                       </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Dedicated Calendar View for Selected Habit */}
+          {selectedHabit && (
+            <div className="bg-[#FFFFFF] rounded-3xl p-6 md:p-8 border border-[#EAE5D8] shadow-xs space-y-6">
+              {/* Calendar Title & Adherence Metrics */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-[#EAE5D8]">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#7C9A86]" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#586B60]">
+                      Monthly Ritual Calendar
+                    </span>
+                    <span className="text-[#8E9E94]">•</span>
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${getCategoryBadge(selectedHabit.category)}`}>
+                      {selectedHabit.category}
+                    </span>
+                  </div>
+
+                  <h3 className="font-serif text-2xl md:text-3xl font-bold text-[#1A241E]">
+                    {selectedHabit.title}
+                  </h3>
+
+                  {selectedHabit.description && (
+                    <p className="text-xs text-[#586B60] italic">
+                      &ldquo;{selectedHabit.description}&rdquo;
+                    </p>
+                  )}
+                </div>
+
+                {/* Stat Badges for this Habit */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Consistency Capsule */}
+                  <div className="px-4 py-2 rounded-2xl bg-[#FAF8F2] border border-[#EAE5D8] text-center">
+                    <span className="block font-serif text-xl font-bold text-[#1A241E]">
+                      {selectedHabitStats.consistencyRate}%
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-[#586B60]">
+                      Adherence
+                    </span>
+                  </div>
+
+                  {/* Completed Days Capsule */}
+                  <div className="px-4 py-2 rounded-2xl bg-[#EAF0EC] border border-[#7C9A86]/30 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <Check className="w-4 h-4 text-[#2E604A] stroke-[3]" />
+                      <span className="font-serif text-xl font-bold text-[#2E604A]">
+                        {selectedHabitStats.completedDays}
+                      </span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-[#2E604A]">
+                      Honored (✓)
+                    </span>
+                  </div>
+
+                  {/* Missed Days Capsule */}
+                  <div className="px-4 py-2 rounded-2xl bg-[#F9ECE6] border border-[#D98A6C]/30 text-center">
+                    <div className="flex items-center justify-center gap-1">
+                      <X className="w-4 h-4 text-[#C87452] stroke-[3]" />
+                      <span className="font-serif text-xl font-bold text-[#C87452]">
+                        {selectedHabitStats.missedDays}
+                      </span>
+                    </div>
+                    <span className="text-[10px] uppercase font-bold text-[#C87452]">
+                      Missed (✗)
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weekday Names Header */}
+              <div className="grid grid-cols-7 text-center text-xs font-bold uppercase tracking-wider text-[#8E9E94]">
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  <div key={d} className="py-1">
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              {/* The Calendar Matrix (Ticks and Crosses) */}
+              <div className="grid grid-cols-7 gap-2 md:gap-3">
+                {calendarDays.map((dateStr, idx) => {
+                  if (!dateStr) {
+                    return (
+                      <div
+                        key={`empty-${idx}`}
+                        className="h-20 md:h-24 rounded-2xl bg-[#FAF8F2]/30 border border-transparent"
+                      />
                     );
-                  })}
+                  }
+
+                  const dayNum = parseInt(dateStr.split("-")[2], 10);
+                  const isTodayDate = dateStr === today;
+                  const isPastDate = dateStr < today;
+                  const isFutureDate = dateStr > today;
+
+                  const log = selectedHabit.logs.find((l) => l.date === dateStr);
+                  const isCompleted = log?.completed === true;
+
+                  // Determine state
+                  // 1. Completed -> Tick (✓)
+                  // 2. Past & Not completed -> Cross (✗)
+                  // 3. Today & Not completed -> Pending / Cross (✗)
+                  // 4. Future -> Upcoming (—)
+
+                  return (
+                    <div
+                      key={dateStr}
+                      className={`h-20 md:h-24 rounded-2xl p-2 md:p-2.5 flex flex-col justify-between transition-all relative border ${
+                        isTodayDate
+                          ? "ring-2 ring-[#D4A373] bg-[#FAF7F0] border-[#D4A373]/50 shadow-xs"
+                          : isCompleted
+                          ? "bg-[#F4F8F5] border-[#D3E3D7]"
+                          : isPastDate
+                          ? "bg-[#FDF6F3] border-[#F0D5CA]"
+                          : "bg-[#FAF8F2]/60 border-[#EAE5D8]"
+                      }`}
+                    >
+                      {/* Day Number and Today Badge */}
+                      <div className="flex items-center justify-between">
+                        <span
+                          className={`text-xs md:text-sm font-semibold ${
+                            isTodayDate
+                              ? "text-[#1E3127] font-bold"
+                              : isPastDate || isCompleted
+                              ? "text-[#1A241E]"
+                              : "text-[#8E9E94]"
+                          }`}
+                        >
+                          {dayNum}
+                        </span>
+
+                        {isTodayDate && (
+                          <span className="text-[9px] font-extrabold uppercase tracking-wide bg-[#D4A373] text-white px-1.5 py-0.2 rounded-md">
+                            Today
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Status Icon: Tick (✓), Cross (✗), or Upcoming (—) */}
+                      <div className="flex flex-col items-center justify-center my-auto">
+                        {isCompleted ? (
+                          <div
+                            className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#EAF0EC] border border-[#7C9A86]/50 text-[#2E604A] flex items-center justify-center shadow-2xs"
+                            title={`Completed on ${dateStr}`}
+                          >
+                            <Check className="w-4 h-4 stroke-[3]" />
+                          </div>
+                        ) : isPastDate ? (
+                          <div
+                            className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#F9ECE6] border border-[#D98A6C]/50 text-[#C87452] flex items-center justify-center shadow-2xs"
+                            title={`Missed on ${dateStr}`}
+                          >
+                            <X className="w-4 h-4 stroke-[3]" />
+                          </div>
+                        ) : isTodayDate ? (
+                          <div
+                            className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-[#FAF7F0] border-2 border-dashed border-[#D4A373] text-[#C87452] flex items-center justify-center"
+                            title="Pending today"
+                          >
+                            <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </div>
+                        ) : (
+                          <div
+                            className="w-5 h-5 rounded-full flex items-center justify-center text-[#B0BDB5]"
+                            title="Upcoming day"
+                          >
+                            <span className="text-xs font-bold text-[#8E9E94]">—</span>
+                          </div>
+                        )}
+
+                        {/* Text Label Below Icon */}
+                        <span
+                          className={`text-[9px] font-semibold mt-1 hidden md:block ${
+                            isCompleted
+                              ? "text-[#2E604A]"
+                              : isPastDate
+                              ? "text-[#C87452]"
+                              : isTodayDate
+                              ? "text-[#8C7A5E]"
+                              : "text-[#8E9E94]"
+                          }`}
+                        >
+                          {isCompleted
+                            ? "Done"
+                            : isPastDate
+                            ? "Missed"
+                            : isTodayDate
+                            ? "Pending"
+                            : "Upcoming"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Calendar Legend & Wisdom Card */}
+              <div className="pt-5 border-t border-[#EAE5D8] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                {/* Visual Legend */}
+                <div className="flex items-center gap-5 text-xs text-[#586B60] flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-[#EAF0EC] border border-[#7C9A86]/50 text-[#2E604A] flex items-center justify-center">
+                      <Check className="w-3 h-3 stroke-[3]" />
+                    </div>
+                    <span>
+                      <strong className="text-[#1A241E]">✓ Completed</strong> ({selectedHabitStats.completedDays} days)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-[#F9ECE6] border border-[#D98A6C]/50 text-[#C87452] flex items-center justify-center">
+                      <X className="w-3 h-3 stroke-[3]" />
+                    </div>
+                    <span>
+                      <strong className="text-[#1A241E]">✗ Missed</strong> ({selectedHabitStats.missedDays} days)
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-[#FAF8F2] border border-[#EAE5D8] text-[#8E9E94] flex items-center justify-center text-[10px] font-bold">
+                      —
+                    </div>
+                    <span>
+                      <strong className="text-[#1A241E]">Upcoming</strong> ({selectedHabitStats.upcomingDays} days)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Botanical Wisdom Note */}
+                <div className="flex items-center gap-2 text-xs text-[#586B60] italic">
+                  <Compass className="w-4 h-4 text-[#D98A6C] shrink-0" />
+                  <span>&ldquo;Consistency is not perfection; it is returning to the root.&rdquo;</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* LENS 2: TASK EXECUTION LENS (Seasonal Accomplishment Scoreboard & Log)     */}
+      {/* ========================================================================= */}
+      {activeLens === "TASKS" && (
+        <div className="space-y-6">
+          {/* Monthly Task Metric Scoreboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Total Intentions */}
+            <div className="p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-2xs">
+              <div className="flex items-center justify-between text-[#7C9A86] mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  Monthly Intentions
+                </span>
+                <CalendarDays className="w-4 h-4 text-[#7C9A86]" />
+              </div>
+              <div className="font-serif text-3xl font-bold text-[#1A241E]">
+                {monthTasks.length}
+              </div>
+              <p className="text-xs text-[#586B60] mt-1">
+                Tasks scheduled in {currentMonthName} {currentYear}
+              </p>
+            </div>
+
+            {/* Completed Rate */}
+            <div className="p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-2xs">
+              <div className="flex items-center justify-between text-[#2E604A] mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  Execution Velocity
+                </span>
+                <CheckCircle2 className="w-4 h-4 text-[#2E604A]" />
+              </div>
+              <div className="font-serif text-3xl font-bold text-[#1A241E]">
+                {monthTaskRate}%
+              </div>
+              <p className="text-xs text-[#586B60] mt-1">
+                {monthCompletedTasks.length} of {monthTasks.length} intentions honored
+              </p>
+            </div>
+
+            {/* High & Urgent Execution */}
+            <div className="p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-2xs">
+              <div className="flex items-center justify-between text-[#C87452] mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  High Priority Achieved
+                </span>
+                <Trophy className="w-4 h-4 text-[#D98A6C]" />
+              </div>
+              <div className="font-serif text-3xl font-bold text-[#1A241E]">
+                {
+                  monthTasks.filter((t) => (t.priority === "HIGH" || t.priority === "URGENT") && t.status === "COMPLETED").length
+                }
+                <span className="text-sm font-sans font-normal text-[#8E9E94] ml-1.5">
+                  / {monthTasks.filter((t) => t.priority === "HIGH" || t.priority === "URGENT").length || 0}
+                </span>
+              </div>
+              <p className="text-xs text-[#586B60] mt-1">
+                Critical priority focus completion
+              </p>
+            </div>
+
+            {/* Pending / Incomplete */}
+            <div className="p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-2xs">
+              <div className="flex items-center justify-between text-[#8C7A5E] mb-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                  Carried Over / Pending
+                </span>
+                <Clock className="w-4 h-4 text-[#D4A373]" />
+              </div>
+              <div className="font-serif text-3xl font-bold text-[#1A241E]">
+                {monthTasks.filter((t) => t.status !== "COMPLETED").length}
+              </div>
+              <p className="text-xs text-[#586B60] mt-1">
+                Intentions awaiting completion
+              </p>
+            </div>
+          </div>
+
+          {/* Search, Filter & Date Selector Bar */}
+          <div className="p-5 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] shadow-2xs space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Search Bar */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="w-4 h-4 text-[#8E9E94] absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Search accomplishments..."
+                  value={taskSearchQuery}
+                  onChange={(e) => setTaskSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-[#FAF8F2] border border-[#EAE5D8] text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]/40 transition-all placeholder:text-[#8E9E94]"
+                />
+              </div>
+
+              {/* Status Filter Buttons */}
+              <div className="flex items-center gap-1.5 bg-[#FAF8F2] p-1 rounded-xl border border-[#EAE5D8]">
+                <button
+                  onClick={() => setTaskStatusFilter("ALL")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    taskStatusFilter === "ALL"
+                      ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
+                      : "text-[#586B60] hover:text-[#1A241E]"
+                  }`}
+                >
+                  All ({monthTasks.length})
+                </button>
+                <button
+                  onClick={() => setTaskStatusFilter("COMPLETED")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    taskStatusFilter === "COMPLETED"
+                      ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
+                      : "text-[#586B60] hover:text-[#1A241E]"
+                  }`}
+                >
+                  Completed ({monthCompletedTasks.length})
+                </button>
+                <button
+                  onClick={() => setTaskStatusFilter("PENDING")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                    taskStatusFilter === "PENDING"
+                      ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
+                      : "text-[#586B60] hover:text-[#1A241E]"
+                  }`}
+                >
+                  Pending ({monthTasks.length - monthCompletedTasks.length})
+                </button>
+              </div>
+            </div>
+
+            {/* Category Filter Pills & Active Date Clearer */}
+            <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-[#EAE5D8]">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[11px] font-bold text-[#586B60] mr-1">Category:</span>
+                {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setTaskCategoryFilter(cat)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
+                      taskCategoryFilter.toLowerCase() === cat.toLowerCase()
+                        ? "bg-[#7C9A86] text-white"
+                        : "bg-[#FAF8F2] text-[#586B60] hover:bg-[#EAE5D8] border border-[#EAE5D8]"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+
+              {selectedDateForTasks && (
+                <div className="flex items-center gap-2 text-xs text-[#586B60]">
+                  <span>Filtering by date: <strong className="text-[#1A241E]">{selectedDateForTasks}</strong></span>
+                  <button
+                    onClick={() => setSelectedDateForTasks(null)}
+                    className="text-[#C87452] underline font-semibold hover:text-[#1E3127]"
+                  >
+                    Clear
+                  </button>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Right: Habit Consistency Breakdown for this Month (6 cols) */}
-            <div className="lg:col-span-6 bg-[#1E3127] text-[#FAF7F0] rounded-3xl p-7 md:p-8 border border-[#2D4336] shadow-sm flex flex-col justify-between">
-              <div>
-                <div className="flex items-center justify-between mb-5">
-                  <div>
-                    <h4 className="font-serif text-2xl font-bold text-[#FAF7F0]">
-                      Habit Consistency ({currentMonthName})
-                    </h4>
-                    <p className="text-xs text-[#8FA697] mt-0.5">
-                      Adherence rate for each habit throughout {currentMonthName}.
-                    </p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full bg-[#2A3F34] text-xs font-semibold text-[#7C9A86]">
-                    Avg: {avgHabitRate}%
-                  </span>
-                </div>
+          {/* Seasonal Accomplishment Log Grouped by Weeks */}
+          <div className="space-y-6">
+            {filteredTasks.length === 0 ? (
+              <div className="p-12 rounded-3xl bg-[#FFFFFF] border border-[#EAE5D8] text-center">
+                <Clock className="w-8 h-8 text-[#8E9E94] mx-auto mb-2 opacity-50" />
+                <h4 className="font-serif text-lg font-semibold text-[#1A241E]">
+                  No intentions matching this filter
+                </h4>
+                <p className="text-xs text-[#8E9E94] mt-1">
+                  Try adjusting your search query, status, or category filters.
+                </p>
+              </div>
+            ) : (
+              weeklyTaskGroups
+                .filter((grp) => grp.tasks.length > 0)
+                .map((grp) => {
+                  const completionRate = grp.tasks.length > 0
+                    ? Math.round((grp.completedCount / grp.tasks.length) * 100)
+                    : 100;
 
-                <div className="space-y-4">
-                  {monthHabitStats.map((h) => (
-                    <div key={h.id} className="p-3.5 rounded-2xl bg-[#24372D] border border-[#354D40]/70">
-                      <div className="flex items-center justify-between text-sm mb-2">
-                        <span className="font-medium text-[#FAF7F0]">{h.title}</span>
+                  return (
+                    <div
+                      key={grp.weekKey}
+                      className="bg-[#FFFFFF] rounded-3xl p-6 md:p-7 border border-[#EAE5D8] shadow-xs space-y-4"
+                    >
+                      {/* Week Header */}
+                      <div className="flex items-center justify-between pb-3 border-b border-[#EAE5D8]">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-[#1E3127] text-[#FAF7F0] flex items-center justify-center font-serif font-bold text-xs">
+                            {grp.title.replace("Week ", "W")}
+                          </div>
+                          <div>
+                            <h4 className="font-serif text-xl font-bold text-[#1A241E]">
+                              {grp.title}
+                            </h4>
+                            <span className="text-xs text-[#586B60]">
+                              {grp.dateRange}
+                            </span>
+                          </div>
+                        </div>
+
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#8FA697]">
-                            {h.completedCount} / {h.possibleDays} days
+                          <span className="text-xs font-semibold text-[#586B60]">
+                            {grp.completedCount} of {grp.tasks.length} Completed
                           </span>
-                          <span className="font-serif font-bold text-[#FAF7F0]">
-                            {h.rate}%
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                              completionRate >= 80
+                                ? "bg-[#EAF0EC] text-[#2E604A] border border-[#7C9A86]/40"
+                                : "bg-[#FAF7F0] text-[#8C7A5E] border border-[#D4A373]/40"
+                            }`}
+                          >
+                            {completionRate}%
                           </span>
                         </div>
                       </div>
 
-                      {/* Bar */}
-                      <div className="w-full h-2.5 bg-[#1E3127] rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            h.rate >= 80
-                              ? "bg-[#7C9A86]"
-                              : h.rate >= 60
-                              ? "bg-[#D4A373]"
-                              : "bg-[#D98A6C]"
-                          }`}
-                          style={{ width: `${h.rate}%` }}
-                        />
+                      {/* Task Cards in this Week */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {grp.tasks.map((task) => {
+                          const isDone = task.status === "COMPLETED";
+
+                          return (
+                            <div
+                              key={task.id}
+                              className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                                isDone
+                                  ? "bg-[#FAF8F2] border-[#EAE5D8]"
+                                  : "bg-[#FFFFFF] border-[#D98A6C]/40 shadow-2xs"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2.5">
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                  <div
+                                    className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                                      isDone
+                                        ? "bg-[#EAF0EC] border border-[#7C9A86]/50 text-[#2E604A]"
+                                        : "bg-[#F9ECE6] border border-[#D98A6C]/50 text-[#C87452]"
+                                    }`}
+                                  >
+                                    {isDone ? (
+                                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                                    ) : (
+                                      <Clock className="w-3.5 h-3.5" />
+                                    )}
+                                  </div>
+
+                                  <div className="min-w-0">
+                                    <h5
+                                      className={`text-sm font-semibold leading-tight ${
+                                        isDone
+                                          ? "text-[#586B60] line-through decoration-[#8E9E94]/60"
+                                          : "text-[#1A241E]"
+                                      }`}
+                                    >
+                                      {task.title}
+                                    </h5>
+
+                                    {task.description && (
+                                      <p className="text-xs text-[#8E9E94] mt-1 line-clamp-2">
+                                        {task.description}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <span
+                                  className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${getCategoryBadge(
+                                    task.category
+                                  )}`}
+                                >
+                                  {task.category}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between mt-3 pt-2 border-t border-dashed border-[#EAE5D8] text-[11px] text-[#8E9E94]">
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`px-1.5 py-0.2 rounded-md font-semibold text-[9px] ${getPriorityBadge(task.priority)}`}>
+                                    {task.priority}
+                                  </span>
+                                  {task.dueTime && (
+                                    <span className="text-[#586B60] font-medium">
+                                      {task.dueTime}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <button
+                                  onClick={() => setSelectedDateForTasks(task.dueDate)}
+                                  className="text-[11px] text-[#586B60] hover:text-[#1A241E] hover:underline"
+                                  title="Filter by this date"
+                                >
+                                  {task.dueDate}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Monthly Takeaway */}
-              <div className="mt-6 pt-4 border-t border-[#2D4336] flex items-center justify-between text-xs text-[#8FA697]">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#D4A373]" />
-                  <span>
-                    Anchor: <strong className="text-[#FAF7F0]">{bestHabit?.title}</strong> ({bestHabit?.rate}%)
-                  </span>
-                </div>
-                {weakestHabit && (
-                  <div className="flex items-center gap-1.5">
-                    <AlertCircle className="w-3.5 h-3.5 text-[#D98A6C]" />
-                    <span>
-                      Focus: <strong className="text-[#FAF7F0]">{weakestHabit.title}</strong> ({weakestHabit.rate}%)
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
+                  );
+                })
+            )}
           </div>
         </div>
       )}
