@@ -362,6 +362,49 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - **Documentation**:
   - Created `notes/08_Field_Notes_System.md` and updated `notes/00_Index.md`.
 
+### [Step 17] - Streamlined Habits Page Navigation & Minimal Filter Popover
+- **Repositioned View Switcher**:
+  - Removed the static text `"Cultivate consistency daily • Graduate when mastered"` from the right side of the Active Rituals / Graduated tabs bar.
+  - Positioned the **`[ Cards | Weekly Matrix ]`** toggle pill directly in that vacated space for a tighter, more functional header.
+- **Compact & Minimal Filter Popover**:
+  - Replaced the previous 2-row cluttered filter strip with a clean **`[ Filter ]`** popover button matching the Tasks page architecture.
+  - Placed the Filter button directly adjacent to the Cards/Matrix view switcher.
+  - Built a sleek popover modal containing:
+    - **Ritual Status**: `All Active`, `Completed Today`, and `Pending Today` with live counts.
+    - **Categories**: `ALL`, `Mind`, `Body`, `Craft`, `Spirit`, `Study`, `Career`.
+    - **Sort Order**: `Custom Rhythm`, `Highest Streak`, `Consistency Rate`, and `Name (A-Z)`.
+    - **Quick Reset & Close**: Instant reset button with outside-click dismissal.
+  - Added a slim, elegant active filter notification badge strip when filters are active with 1-click clearing.
+- **Verification**:
+  - `npx tsc --noEmit`: 0 errors.
+  - HTTP status 200 verified on `/habits`.
+
+### [Step 14] - Seasons Page Redesign (Habit Row Drilldown & Seasonal Task Log)
+- Implemented **Approach 1** for the **Seasons (`/seasons`)** page as a strict, read-only retrospective observatory ("panoramic lens").
+- **Habit Consistency Lens**:
+  - Top interactive habit constellation row displaying all user habits (`Read a Book`, `Coursera`, `Database Management System`, `Coding / Paper`).
+  - Selecting any habit reveals its dedicated full-month calendar.
+  - Days are marked with **✓** (sage checkmark in circle) for completed days, **✗** (terracotta cross in circle) for missed days, a highlighted ring for Today, and neutral `—` for upcoming future dates.
+  - Dedicated monthly adherence scorecard showing consistency %, honored days (✓), and missed days (✗).
+- **Task Execution Lens**:
+  - Monthly execution scoreboard cards: Monthly Intentions count, Execution Velocity (%), Critical High & Urgent priority completion, and carried-over/pending count.
+  - Seasonal Weekly Accomplishment Log: Groups monthly tasks into **Week 1 (Days 1–7)**, **Week 2 (Days 8–14)**, **Week 3 (Days 15–21)**, and **Week 4 & Beyond (Days 22–End)** with completion percentages and task cards.
+  - Real-time search query, status filters (`All`, `Completed`, `Pending`), and category pills.
+  - Integrated with unified month navigation (prev/next month, quick jumps to August, September, and current month).
+- All changes strictly maintain read-only analytics integrity without adding/removing tasks or habits.
+
+### [Step 15] - Morning Sleep Check-in Streamline & Up/Down Stepper
+- Streamlined **Morning Sleep Check-in** dialog (`MorningSleepDialog.tsx`):
+  - Removed all cluttered preset time chips (`10:00 PM`, `10:30 PM`, `6:00 AM`, etc.).
+  - Defaulted to yesterday's recorded bedtime and wake time automatically on new check-ins.
+  - Added 1-tap "Yesterday: ..." badge to easily reset or view yesterday's exact times.
+  - Implemented sleek, minimal **Up Arrow (▲)** and **Down Arrow (▼)** steppers for both bedtime and wake time.
+  - Each arrow click steps the time by $\pm 15$ minutes; Shift+click or keyboard ArrowUp/ArrowDown steps by $\pm 60$ minutes.
+  - Formatted time values in large editorial serif font (`font-serif text-2xl font-bold text-[#1A241E]`) with direct text editing support.
+- Updated `src/lib/utils.ts` with reusable `formatMinutesTo12Hour` and `stepTimeString` helpers.
+- Updated `DashboardMainView.tsx` to automatically resolve and supply yesterday's sleep log.
+- Verified TypeScript compilation (`npx tsc --noEmit`): 0 errors.
+
 ---
 
 ## 📌 Current Status & Next Actions
@@ -391,6 +434,9 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - [x] Anytime Intentions (Dedicated ANYTIME tab, undated tasks, 1-click Do Today promotion, inline capture)
 - [x] Periodic Rhythm Retrospective Dialogs (Automated Weekly on Monday/first open & Monthly on 1st/new month open)
 - [x] Mindful Sleep Tracking & Morning Check-in System (Auto-popup, target customizer, weekly & monthly sleep rhythms)
+- [x] Field Notes System (`/notes` with rich cards, markdown/text support, and pin toggles)
+- [x] Seasons Page Overhaul (Habit row selection, monthly tick/cross calendar drilldown, and seasonal task accomplishment log)
+- [x] Morning Sleep Check-in Minimal Up/Down Steppers & Yesterday Default
 - [ ] User review and feedback
 
 
