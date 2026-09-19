@@ -70,9 +70,12 @@ A customizable target (defaulting to **8.0 hours / 480 minutes**) establishes th
 * **Trigger Condition**:
   * Evaluated on session open when loading the Dashboard.
   * If no sleep log exists for today (`!data.sleep.todayLog`) and the user has not dismissed it today (`localStorage.getItem("rooted_sleep_dismissed_date") !== today`), the dialog opens automatically.
-* **Interactive Controls**:
-  * Bedtime presets (`10:00 PM`, `10:30 PM`, `11:00 PM`, `11:30 PM`, `12:00 AM`) and custom input.
-  * Wake time presets (`6:00 AM`, `6:30 AM`, `7:00 AM`, `7:30 AM`, `8:00 AM`) and custom input.
+* **Interactive Minimal Time Controls**:
+  * **Defaulted from Yesterday**: On fresh check-ins, the dialog automatically defaults to yesterday's recorded bedtime and wake time (with a 1-tap "Yesterday: ..." badge to restore if edited).
+  * **Minimal Up & Down Steppers**: Replaced clutter of preset chips with sleek, ergonomic **Up Arrow (▲)** and **Down Arrow (▼)** stepper buttons:
+    * Standard click: $\pm 15$ minutes per click.
+    * Shift + Click or keyboard ArrowUp/ArrowDown: $\pm 60$ minutes (1 hour) quick jumps.
+    * Direct text entry supported for arbitrary custom times.
   * Real-time live calculation bar with dynamic progress bar and target tick indicator.
   * Rest quality selector: `🌿 Restful & Deep`, `✨ Balanced`, `⚡ Restless`, `😴 Groggy`.
   * Optional reflection note field.
