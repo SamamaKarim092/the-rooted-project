@@ -72,10 +72,11 @@ A customizable target (defaulting to **8.0 hours / 480 minutes**) establishes th
   * If no sleep log exists for today (`!data.sleep.todayLog`) and the user has not dismissed it today (`localStorage.getItem("rooted_sleep_dismissed_date") !== today`), the dialog opens automatically.
 * **Interactive Minimal Time Controls**:
   * **Defaulted from Yesterday**: On fresh check-ins, the dialog automatically defaults to yesterday's recorded bedtime and wake time (with a 1-tap "Yesterday: ..." badge to restore if edited).
-  * **Minimal Up & Down Steppers**: Replaced clutter of preset chips with sleek, ergonomic **Up Arrow (▲)** and **Down Arrow (▼)** stepper buttons:
-    * Standard click: $\pm 15$ minutes per click.
-    * Shift + Click or keyboard ArrowUp/ArrowDown: $\pm 60$ minutes (1 hour) quick jumps.
-    * Direct text entry supported for arbitrary custom times.
+  * **Left-Aligned Time & Right-Hand Stepper**:
+    * Time value displayed in large editorial serif font (`font-serif text-2xl md:text-3xl font-bold text-[#1A241E]`), **left-aligned** within the input box.
+    * **Right-hand side Up (▲) and Down (▼) arrow buttons** cleanly integrated within the container for quick $\pm 15$ minute adjustments.
+    * Keyboard **ArrowUp (↑)** and **ArrowDown (↓)** keys (with Shift for 1h jump) supported directly on the input.
+  * **No Scrollbar**: Container optimized with hidden scrollbars (`overflow-x-hidden` and `scrollbar-none`) and proportional vertical rhythm, eliminating the horizontal scrollbar above the footer.
   * Real-time live calculation bar with dynamic progress bar and target tick indicator.
   * Rest quality selector: `🌿 Restful & Deep`, `✨ Balanced`, `⚡ Restless`, `😴 Groggy`.
   * Optional reflection note field.
