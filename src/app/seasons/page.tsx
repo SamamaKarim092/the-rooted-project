@@ -17,6 +17,7 @@ export default async function SeasonsPage() {
         orderBy: { date: "desc" },
       },
     },
+    orderBy: { createdAt: "asc" },
   });
 
   return <SeasonsClient tasks={tasks} habits={habits} today={today} />;
