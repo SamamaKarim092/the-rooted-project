@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useMemo, useRef, useEffect } from "react";
 import { 
   Check, 
   Plus, 
@@ -18,7 +18,9 @@ import {
   GraduationCap,
   RotateCcw,
   ArrowRight,
-  X
+  X,
+  SlidersHorizontal,
+  ArrowDownUp
 } from "lucide-react";
 import { 
   toggleHabitLog, 
@@ -74,7 +76,25 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
   const [activeCategory, setActiveCategory] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "COMPLETED" | "PENDING">("ALL");
   const [viewMode, setViewMode] = useState<"CARDS" | "MATRIX">("CARDS");
+  const [sortBy, setSortBy] = useState<"CUSTOM" | "STREAK_DESC" | "RATE_DESC" | "NAME_ASC">("CUSTOM");
+  const [showFilterMenu, setShowFilterMenu] = useState(false);
+  const filterMenuRef = useRef<HTMLDivElement>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Close filter menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (filterMenuRef.current && !filterMenuRef.current.contains(event.target as Node)) {
+        setShowFilterMenu(false);
+      }
+    }
+    if (showFilterMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showFilterMenu]);
 
   // Create Habit Form State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -415,9 +435,18 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
     return Math.round((completed / totalPossible) * 100);
   }, [habitStats]);
 
-  // Filtered habits by Category & Completion Status
+  // Active Filter state check & Reset handler
+  const isFilterActive = activeCategory !== "ALL" || statusFilter !== "ALL" || sortBy !== "CUSTOM";
+
+  const handleResetFilters = () => {
+    setActiveCategory("ALL");
+    setStatusFilter("ALL");
+    setSortBy("CUSTOM");
+  };
+
+  // Filtered habits by Category, Completion Status & Sort Order
   const filteredStats = useMemo(() => {
-    return habitStats.filter((h) => {
+    let result = habitStats.filter((h) => {
       const matchesCategory =
         activeCategory === "ALL" ||
         h.habit.category.toLowerCase() === activeCategory.toLowerCase();
@@ -427,7 +456,17 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
         (statusFilter === "PENDING" && !h.isTodayDone);
       return matchesCategory && matchesStatus;
     });
-  }, [habitStats, activeCategory, statusFilter]);
+
+    if (sortBy === "STREAK_DESC") {
+      result = [...result].sort((a, b) => b.currentStreak - a.currentStreak);
+    } else if (sortBy === "RATE_DESC") {
+      result = [...result].sort((a, b) => b.weeklyProgressRate - a.weeklyProgressRate);
+    } else if (sortBy === "NAME_ASC") {
+      result = [...result].sort((a, b) => a.habit.title.localeCompare(b.habit.title));
+    }
+
+    return result;
+  }, [habitStats, activeCategory, statusFilter, sortBy]);
 
   const getCategoryBadge = (cat: string) => {
     switch (cat.toLowerCase()) {
@@ -587,9 +626,200 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
           </button>
         </div>
 
-        {habitsTab === "ACTIVE" && activeHabits.length > 0 && (
-          <div className="text-xs text-[#7C9A86] font-medium hidden sm:block">
-            Cultivate consistency daily • Graduate when mastered
+        {/* Right side: Cards vs Weekly Matrix view toggle & Filter popover button */}
+        {habitsTab === "ACTIVE" && (
+          <div className="flex items-center gap-2.5 flex-wrap self-end sm:self-auto">
+            {/* View Mode Toggle: Cards vs Weekly Matrix */}
+            <div className="flex items-center gap-1 bg-[#FFFFFF] p-1 rounded-2xl border border-[#EAE5D8] shadow-2xs">
+              <button
+                onClick={() => setViewMode("CARDS")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === "CARDS"
+                    ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
+                    : "text-[#586B60] hover:text-[#1A241E]"
+                }`}
+              >
+                <LayoutGrid className="w-3.5 h-3.5" />
+                <span>Cards</span>
+              </button>
+
+              <button
+                onClick={() => setViewMode("MATRIX")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  viewMode === "MATRIX"
+                    ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
+                    : "text-[#586B60] hover:text-[#1A241E]"
+                }`}
+              >
+                <CalendarDays className="w-3.5 h-3.5" />
+                <span>Weekly Matrix</span>
+              </button>
+            </div>
+
+            {/* Filter & Order Popover Button */}
+            <div className="relative shrink-0" ref={filterMenuRef}>
+              <button
+                onClick={() => setShowFilterMenu((prev) => !prev)}
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl border text-xs font-semibold tracking-wide transition-all shadow-2xs cursor-pointer ${
+                  isFilterActive
+                    ? "bg-[#1E3127] text-[#FAF7F0] border-[#1E3127]"
+                    : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Filter</span>
+                {activeCategory !== "ALL" && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D4A373] text-white">
+                    {activeCategory}
+                  </span>
+                )}
+                {statusFilter !== "ALL" && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#7C9A86] text-white">
+                    {statusFilter === "COMPLETED" ? "Done" : "Pending"}
+                  </span>
+                )}
+                {isFilterActive && activeCategory === "ALL" && statusFilter === "ALL" && (
+                  <span className="w-2 h-2 rounded-full bg-[#D98A6C] animate-pulse" />
+                )}
+              </button>
+
+              {/* Minimal, Simple Filter Popover */}
+              {showFilterMenu && (
+                <div className="absolute right-0 top-full mt-2 w-80 sm:w-88 z-40 bg-[#FAF7F0] border border-[#EAE5D8] rounded-3xl p-4 sm:p-5 shadow-xl text-[#1A241E] space-y-4 animate-in fade-in duration-150">
+                  {/* Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-[#EAE5D8]">
+                    <div className="flex items-center gap-2">
+                      <SlidersHorizontal className="w-4 h-4 text-[#7C9A86]" />
+                      <span className="font-serif text-base font-bold text-[#1A241E]">
+                        Filter Rituals
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isFilterActive && (
+                        <button
+                          type="button"
+                          onClick={handleResetFilters}
+                          className="flex items-center gap-1 text-[11px] font-semibold text-[#C87452] hover:text-[#D98A6C] transition-colors cursor-pointer"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Reset</span>
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setShowFilterMenu(false)}
+                        className="p-1 rounded-full text-[#8E9E94] hover:text-[#1A241E] hover:bg-[#EAE5D8]/50 transition-colors cursor-pointer"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Section 1: Ritual Status */}
+                  <div className="space-y-2">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                      Ritual Status
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter("ALL")}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                          statusFilter === "ALL"
+                            ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                            : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                        }`}
+                      >
+                        All Active ({activeHabits.length})
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter("COMPLETED")}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          statusFilter === "COMPLETED"
+                            ? "bg-[#7C9A86] text-white shadow-2xs"
+                            : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                        }`}
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Completed ({completedTodayCount})</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setStatusFilter("PENDING")}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                          statusFilter === "PENDING"
+                            ? "bg-[#D98A6C] text-white shadow-2xs"
+                            : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                        }`}
+                      >
+                        <Clock className="w-3.5 h-3.5" />
+                        <span>Pending ({pendingTodayCount})</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Section 2: Categories */}
+                  <div className="space-y-2 pt-2 border-t border-[#EAE5D8]">
+                    <span className="block text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                      Category
+                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => {
+                        const isSelected = activeCategory === cat;
+                        return (
+                          <button
+                            key={cat}
+                            type="button"
+                            onClick={() => setActiveCategory(cat)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-[#D4A373] text-white shadow-2xs"
+                                : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                            }`}
+                          >
+                            {cat}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Section 3: Sort Order */}
+                  <div className="space-y-2 pt-2 border-t border-[#EAE5D8]">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-[#586B60]">
+                      <ArrowDownUp className="w-3 h-3 text-[#D4A373]" />
+                      <span>Sort Order</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {[
+                        { key: "CUSTOM", label: "Custom Rhythm" },
+                        { key: "STREAK_DESC", label: "Highest Streak" },
+                        { key: "RATE_DESC", label: "Consistency" },
+                        { key: "NAME_ASC", label: "Name (A-Z)" },
+                      ].map((opt) => {
+                        const isSelected = sortBy === opt.key;
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setSortBy(opt.key as any)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
+                                : "bg-white text-[#586B60] border border-[#EAE5D8] hover:border-[#7C9A86]/50"
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -816,97 +1046,36 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
         </div>
       ) : (
         <>
-          {/* 3. Filter Bar: Categories + Completion Status + View Mode Switcher */}
-          <div className="space-y-3 border-b border-[#EAE5D8] pb-4">
-            {/* Row 1: Category Pills */}
-            <div className="flex items-center justify-between gap-3 flex-wrap">
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-                {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => setActiveCategory(cat)}
-                    className={`px-4 py-2 rounded-2xl text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${
-                      activeCategory === cat
-                        ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
-                        : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
-                    }`}
-                  >
-                    {cat.toLowerCase()}
-                  </button>
-                ))}
+          {/* Active Filter Chips / Notice (Clean & Minimal) */}
+          {isFilterActive && (
+            <div className="flex items-center justify-between gap-2 p-3 px-4 rounded-2xl bg-[#FFFFFF] border border-[#EAE5D8] text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[#8E9E94] font-medium">Active filter:</span>
+                {activeCategory !== "ALL" && (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-[#D4A373]/15 text-[#93593B] font-semibold border border-[#D4A373]/30">
+                    Category: {activeCategory}
+                  </span>
+                )}
+                {statusFilter !== "ALL" && (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-[#7C9A86]/15 text-[#2F523E] font-semibold border border-[#7C9A86]/30">
+                    Status: {statusFilter === "COMPLETED" ? "Completed Today" : "Pending Today"}
+                  </span>
+                )}
+                {sortBy !== "CUSTOM" && (
+                  <span className="px-2.5 py-0.5 rounded-lg bg-[#EAE5D8] text-[#586B60] font-semibold">
+                    Order: {sortBy === "STREAK_DESC" ? "Highest Streak" : sortBy === "RATE_DESC" ? "Consistency" : "Name A-Z"}
+                  </span>
+                )}
               </div>
-
-              {/* View Mode Toggle: Cards vs Weekly Matrix */}
-              <div className="flex items-center gap-1.5 bg-[#FFFFFF] p-1.5 rounded-2xl border border-[#EAE5D8] shadow-2xs">
-                <button
-                  onClick={() => setViewMode("CARDS")}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    viewMode === "CARDS"
-                      ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
-                      : "text-[#586B60] hover:text-[#1A241E]"
-                  }`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Cards</span>
-                </button>
-
-                <button
-                  onClick={() => setViewMode("MATRIX")}
-                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    viewMode === "MATRIX"
-                      ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
-                      : "text-[#586B60] hover:text-[#1A241E]"
-                  }`}
-                >
-                  <CalendarDays className="w-3.5 h-3.5" />
-                  <span>Weekly Matrix</span>
-                </button>
-              </div>
+              <button
+                onClick={handleResetFilters}
+                className="text-[#C87452] hover:text-[#D98A6C] font-semibold text-xs cursor-pointer flex items-center gap-1 shrink-0"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset Filters</span>
+              </button>
             </div>
-
-            {/* Row 2: Completion Status Quick-Filter */}
-            {activeHabits.length > 0 && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#8E9E94] mr-1">
-                  Filter:
-                </span>
-                <button
-                  onClick={() => setStatusFilter("ALL")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    statusFilter === "ALL"
-                      ? "bg-[#1E3127] text-[#FAF7F0] shadow-2xs"
-                      : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
-                  }`}
-                >
-                  All Active ({activeHabits.length})
-                </button>
-
-                <button
-                  onClick={() => setStatusFilter("COMPLETED")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    statusFilter === "COMPLETED"
-                      ? "bg-[#7C9A86] text-white shadow-2xs"
-                      : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
-                  }`}
-                >
-                  <CheckCircle2 className="w-3.5 h-3.5 text-[#5F7E6A] group-hover:text-white" />
-                  <span>Completed Today ({completedTodayCount})</span>
-                </button>
-
-                <button
-                  onClick={() => setStatusFilter("PENDING")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                    statusFilter === "PENDING"
-                      ? "bg-[#D98A6C] text-white shadow-2xs"
-                      : "bg-[#FFFFFF] text-[#586B60] hover:text-[#1A241E] border border-[#EAE5D8]"
-                  }`}
-                >
-                  <Clock className="w-3.5 h-3.5 text-[#D4A373]" />
-                  <span>Pending Today ({pendingTodayCount})</span>
-                </button>
-              </div>
-            )}
-          </div>
+          )}
 
           {/* 4. MAIN CONTENT AREA */}
           {activeHabits.length === 0 ? (
@@ -980,11 +1149,8 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
             No habit rituals found matching this filter criteria.
           </p>
           <button
-            onClick={() => {
-              setActiveCategory("ALL");
-              setStatusFilter("ALL");
-            }}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#1E3127] text-[#FAF7F0]"
+            onClick={handleResetFilters}
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-[#1E3127] text-[#FAF7F0] hover:bg-[#2A3F34] transition-all cursor-pointer shadow-xs"
           >
             Reset Filters
           </button>
