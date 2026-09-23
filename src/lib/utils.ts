@@ -3,6 +3,23 @@ export function getTodayString(): string {
   return d.toISOString().split("T")[0];
 }
 
+export function getYesterdayString(baseDateStr?: string): string {
+  const ref = baseDateStr || getTodayString();
+  const parts = ref.split("-");
+  if (parts.length === 3) {
+    const [year, month, day] = parts.map(Number);
+    const d = new Date(year, month - 1, day);
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${dd}`;
+  }
+  const dObj = new Date(ref + "T00:00:00");
+  dObj.setDate(dObj.getDate() - 1);
+  return dObj.toISOString().split("T")[0];
+}
+
 export function formatDayName(dateString: string): string {
   const d = new Date(dateString);
   const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -203,3 +220,148 @@ export function getPreviousMonthKey(monthKey: string): string {
   }
   return `${y}-${String(m).padStart(2, "0")}`;
 }
+
+// ==========================================
+// 🌙 SLEEP & REST RHYTHM UTILITIES
+// ==========================================
+
+export interface SleepDurationResult {
+  durationMinutes: number;
+  formattedHours: string;
+  hoursDecimal: number;
+  hours: number;
+  minutes: number;
+}
+
+export function parseTimeToMinutes(timeStr: string): number {
+  if (!timeStr) return 0;
+  const cleaned = timeStr.trim().toUpperCase();
+
+  // Check 12-hour format: e.g. "11:30 PM", "7:00 AM", "11:30PM"
+  const match12 = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/);
+  if (match12) {
+    let h = parseInt(match12[1], 10);
+    const m = parseInt(match12[2], 10);
+    const period = match12[3];
+    if (period === "AM" && h === 12) h = 0;
+    if (period === "PM" && h !== 12) h += 12;
+    return h * 60 + m;
+  }
+
+  // Check 24-hour format: e.g. "23:30", "07:00"
+  const match24 = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) {
+    const h = parseInt(match24[1], 10);
+    const m = parseInt(match24[2], 10);
+    return h * 60 + m;
+  }
+
+  return 0;
+}
+
+export function calculateSleepDuration(bedtime: string, wakeTime: string): SleepDurationResult {
+  const bedMins = parseTimeToMinutes(bedtime);
+  const wakeMins = parseTimeToMinutes(wakeTime);
+
+  let durationMinutes = 0;
+  if (wakeMins >= bedMins) {
+    // Slept and woke on the same calendar day (e.g. 01:00 to 09:00)
+    durationMinutes = wakeMins - bedMins;
+  } else {
+    // Overnight sleep crossing midnight (e.g. 23:00 to 07:30)
+    durationMinutes = (1440 - bedMins) + wakeMins;
+  }
+
+  const hours = Math.floor(durationMinutes / 60);
+  const minutes = durationMinutes % 60;
+  const hoursDecimal = Math.round((durationMinutes / 60) * 10) / 10;
+  const formattedHours = minutes > 0 ? `${hours}h ${minutes}m` : `${hours}h 0m`;
+
+  return {
+    durationMinutes,
+    formattedHours,
+    hoursDecimal,
+    hours,
+    minutes,
+  };
+}
+
+export interface SleepTargetEvaluation {
+  targetMinutes: number;
+  actualMinutes: number;
+  differenceMinutes: number;
+  status: "OPTIMAL" | "DEFICIT" | "OVERSLEPT";
+  statusLabel: string;
+  diffLabel: string;
+  percentage: number;
+}
+
+export function evaluateSleepTarget(
+  durationMinutes: number,
+  targetHours: number = 8.0
+): SleepTargetEvaluation {
+  const targetMinutes = Math.round(targetHours * 60);
+  const diff = durationMinutes - targetMinutes;
+  const absDiff = Math.abs(diff);
+  const diffH = Math.floor(absDiff / 60);
+  const diffM = absDiff % 60;
+  const formattedDiff = diffH > 0 ? `${diffH}h ${diffM}m` : `${diffM}m`;
+
+  const percentage = targetMinutes > 0 ? Math.round((durationMinutes / targetMinutes) * 100) : 100;
+
+  if (absDiff <= 15) {
+    return {
+      targetMinutes,
+      actualMinutes: durationMinutes,
+      differenceMinutes: diff,
+      status: "OPTIMAL",
+      statusLabel: "Optimal Rest",
+      diffLabel: "Target Met",
+      percentage,
+    };
+  } else if (diff > 15) {
+    return {
+      targetMinutes,
+      actualMinutes: durationMinutes,
+      differenceMinutes: diff,
+      status: "OVERSLEPT",
+      statusLabel: "Overslept",
+      diffLabel: `+${formattedDiff} Overslept`,
+      percentage,
+    };
+  } else {
+    return {
+      targetMinutes,
+      actualMinutes: durationMinutes,
+      differenceMinutes: diff,
+      status: "DEFICIT",
+      statusLabel: "Sleep Debt",
+      diffLabel: `-${formattedDiff} Deficit`,
+      percentage,
+    };
+  }
+}
+
+export function formatMinutesToHours(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h}h ${m}m` : `${h}h 0m`;
+}
+
+export function formatMinutesTo12Hour(totalMinutes: number): string {
+  const normalized = ((totalMinutes % 1440) + 1440) % 1440;
+  let h = Math.floor(normalized / 60);
+  const m = normalized % 60;
+  const period = h >= 12 ? "PM" : "AM";
+  h = h % 12;
+  if (h === 0) h = 12;
+  const formattedMinutes = String(m).padStart(2, "0");
+  return `${h}:${formattedMinutes} ${period}`;
+}
+
+export function stepTimeString(currentTime: string, deltaMinutes: number): string {
+  let mins = parseTimeToMinutes(currentTime);
+  if (isNaN(mins)) mins = 0;
+  return formatMinutesTo12Hour(mins + deltaMinutes);
+}
+
