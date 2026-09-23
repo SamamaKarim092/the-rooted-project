@@ -1,14 +1,82 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
-import { getTodayString } from "@/lib/utils";
+import {
+  getTodayString,
+  getYesterdayString,
+  calculateSleepDuration,
+  evaluateSleepTarget,
+  getWeekRange
+} from "@/lib/utils";
+
+/**
+ * Retrieves the current authenticated Clerk user ID,
+ * or gracefully falls back to "default_user" if unauthenticated / running locally.
+ * If a real Clerk user logs in, automatically claims any existing unassigned "default_user" data.
+ */
+export async function getEffectiveUserId(): Promise<string> {
+  try {
+    const { userId } = await auth();
+    if (userId) {
+      return userId;
+    }
+    return "default_user";
+  } catch {
+    return "default_user";
+  }
+}
+
+/**
+ * Seamlessly migrates existing seed / single-user data from "default_user"
+ * to the first authenticated Clerk user account.
+ */
+export async function claimDefaultUserData(targetUserId: string) {
+  if (!targetUserId || targetUserId === "default_user") return;
+  try {
+    const defaultUserTaskCount = await prisma.task.count({ where: { userId: "default_user" } });
+    const defaultUserHabitCount = await prisma.habit.count({ where: { userId: "default_user" } });
+    const defaultUserGoalCount = await prisma.goal.count({ where: { userId: "default_user" } });
+
+    if (defaultUserTaskCount === 0 && defaultUserHabitCount === 0 && defaultUserGoalCount === 0) {
+      return;
+    }
+
+    // Only claim if target user does not have any tasks yet
+    const targetUserTaskCount = await prisma.task.count({ where: { userId: targetUserId } });
+    if (targetUserTaskCount === 0) {
+      await prisma.$transaction([
+        prisma.task.updateMany({ where: { userId: "default_user" }, data: { userId: targetUserId } }),
+        prisma.habit.updateMany({ where: { userId: "default_user" }, data: { userId: targetUserId } }),
+        prisma.goal.updateMany({ where: { userId: "default_user" }, data: { userId: targetUserId } }),
+        prisma.note.updateMany({ where: { userId: "default_user" }, data: { userId: targetUserId } }),
+        prisma.sleepLog.updateMany({ where: { userId: "default_user" }, data: { userId: targetUserId } }),
+      ]);
+
+      const defaultSetting = await prisma.sleepSetting.findUnique({ where: { userId: "default_user" } });
+      if (defaultSetting) {
+        await prisma.sleepSetting.upsert({
+          where: { userId: targetUserId },
+          create: { userId: targetUserId, targetHours: defaultSetting.targetHours },
+          update: { targetHours: defaultSetting.targetHours },
+        });
+        await prisma.sleepSetting.delete({ where: { userId: "default_user" } }).catch(() => { });
+      }
+      console.log(`[Rooted Auth] Successfully claimed default_user data for user ${targetUserId}`);
+    }
+  } catch (err) {
+    console.error("[Rooted Auth] Error claiming default_user data:", err);
+  }
+}
 
 export async function getDashboardData() {
+  const userId = await getEffectiveUserId();
   const today = getTodayString();
 
-  // Fetch today's tasks & recent tasks
+  // Fetch today's tasks & recent tasks scoped to user
   const tasks = await prisma.task.findMany({
+    where: { userId },
     orderBy: [{ status: "asc" }, { priority: "desc" }],
     include: {
       goal: true,
@@ -17,9 +85,9 @@ export async function getDashboardData() {
   });
   tasks.sort((a, b) => ((a as any).order ?? 0) - ((b as any).order ?? 0));
 
-  // Fetch active habits and their logs for past 60 days (covers weekly & monthly retrospectives)
+  // Fetch active habits and their logs for past 60 days
   const habits = await prisma.habit.findMany({
-    where: { status: "ACTIVE" },
+    where: { userId, status: "ACTIVE" },
     include: {
       logs: {
         orderBy: { date: "desc" },
@@ -29,18 +97,41 @@ export async function getDashboardData() {
     },
   });
 
-  // Fetch primary active goal
-  const activeGoal = await prisma.goal.findFirst({
-    where: { status: "ACTIVE" },
+  // Fetch all active goals scoped to user
+  const activeGoals = await prisma.goal.findMany({
+    where: { userId, status: "ACTIVE" },
     include: {
       milestones: {
         orderBy: { order: "asc" },
       },
     },
+    orderBy: { createdAt: "desc" },
+  });
+  const activeGoal = activeGoals[0] || null;
+
+  // Fetch sleep settings & logs scoped to user
+  const sleepSetting = await prisma.sleepSetting.findUnique({
+    where: { userId },
+  });
+  const sleepTargetHours = sleepSetting?.targetHours ?? 8.0;
+
+  const todaySleepLog = await prisma.sleepLog.findUnique({
+    where: {
+      userId_date: {
+        userId,
+        date: today,
+      },
+    },
   });
 
-  // Calculate metrics
-  const todayTasks = tasks.filter((t) => !t.dueDate || t.dueDate === today);
+  const sleepLogs = await prisma.sleepLog.findMany({
+    where: { userId },
+    orderBy: { date: "desc" },
+    take: 60,
+  });
+
+  // Calculate metrics: strictly tasks where dueDate === today
+  const todayTasks = tasks.filter((t) => t.dueDate === today);
   const completedTasks = todayTasks.filter((t) => t.status === "COMPLETED");
 
   const todayHabitLogs = habits.map((h) => {
@@ -52,7 +143,33 @@ export async function getDashboardData() {
   const totalIntentions = todayTasks.length;
   const completedIntentions = completedTasks.length;
 
-  // Calculate streaks for each habit
+  // Calculate streaks and enrich habits with isCompletedToday & currentStreak
+  const enrichedHabits = habits.map((habit) => {
+    const todayLog = habit.logs.find((l) => l.date === today);
+    const isCompletedToday = Boolean(todayLog?.completed);
+
+    let currentStreak = 0;
+    for (let i = 0; i < 30; i++) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split("T")[0];
+      const log = habit.logs.find((l) => l.date === dateStr);
+      if (log?.completed) {
+        currentStreak++;
+      } else {
+        if (i === 0) continue; // Today not checked off yet, check yesterday
+        break;
+      }
+    }
+
+    return {
+      ...habit,
+      isCompletedToday,
+      currentStreak,
+    };
+  });
+
+  // Calculate streaks for each habit matrix
   const habitMatrix = habits.map((habit) => {
     // Check completion for past 7 days: [6 days ago, ..., today]
     const days: { date: string; dayLabel: string; isCompleted: boolean; isToday: boolean }[] = [];
@@ -132,8 +249,9 @@ export async function getDashboardData() {
     today,
     tasks: todayTasks,
     allTasks: tasks,
-    habits,
+    habits: enrichedHabits,
     habitMatrix,
+    activeGoals,
     activeGoal,
     metrics: {
       harmonyScore,
@@ -142,11 +260,54 @@ export async function getDashboardData() {
       totalIntentions: totalIntentions,
     },
     weeklyFlow,
+    sleep: {
+      targetHours: sleepTargetHours,
+      todayLog: todaySleepLog,
+      allLogs: sleepLogs,
+    },
+  };
+}
+
+export async function getSeasonsData() {
+  const userId = await getEffectiveUserId();
+  const today = getTodayString();
+
+  const tasks = await prisma.task.findMany({
+    where: { userId },
+    orderBy: [{ dueDate: "desc" }, { dueTime: "asc" }],
+  });
+
+  const habits = await prisma.habit.findMany({
+    where: { userId },
+    include: {
+      logs: {
+        orderBy: { date: "desc" },
+      },
+    },
+    orderBy: { createdAt: "asc" },
+  });
+
+  const sleepLogs = await prisma.sleepLog.findMany({
+    where: { userId },
+    orderBy: { date: "desc" },
+  });
+
+  const sleepSetting = await prisma.sleepSetting.findUnique({
+    where: { userId },
+  });
+
+  return {
+    tasks,
+    habits,
+    sleepLogs,
+    sleepSetting,
+    today,
   };
 }
 
 export async function toggleTaskStatus(taskId: string) {
-  const task = await prisma.task.findUnique({ where: { id: taskId } });
+  const userId = await getEffectiveUserId();
+  const task = await prisma.task.findFirst({ where: { id: taskId, userId } });
   if (!task) return null;
 
   const nextStatus = task.status === "COMPLETED" ? "PENDING" : "COMPLETED";
@@ -207,10 +368,12 @@ export async function createTask(formData: {
   goalId?: string;
   milestoneId?: string;
 }) {
+  const userId = await getEffectiveUserId();
   let newOrder = 0;
   try {
     const maxOrderResult: any = await prisma.$queryRawUnsafe(
-      `SELECT MAX("order") as maxOrder FROM Task`
+      `SELECT MAX("order") as maxOrder FROM Task WHERE userId = ?`,
+      userId
     );
     newOrder = ((maxOrderResult?.[0]?.maxOrder as number) ?? -1) + 1;
   } catch {
@@ -219,6 +382,7 @@ export async function createTask(formData: {
 
   const task = await prisma.task.create({
     data: {
+      userId,
       title: formData.title,
       description: formData.description,
       priority: formData.priority || "MEDIUM",
@@ -256,6 +420,10 @@ export async function updateTask(
     goalId?: string | null;
   }
 ) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.task.findFirst({ where: { id: taskId, userId } });
+  if (!existing) return null;
+
   const task = await prisma.task.update({
     where: { id: taskId },
     data: {
@@ -275,6 +443,10 @@ export async function updateTask(
 }
 
 export async function deleteTask(taskId: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.task.findFirst({ where: { id: taskId, userId } });
+  if (!existing) return null;
+
   const task = await prisma.task.delete({ where: { id: taskId } });
   revalidatePath("/");
   revalidatePath("/tasks");
@@ -283,6 +455,10 @@ export async function deleteTask(taskId: string) {
 }
 
 export async function rescheduleTask(taskId: string, newDueDate: string | null) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.task.findFirst({ where: { id: taskId, userId } });
+  if (!existing) return null;
+
   const task = await prisma.task.update({
     where: { id: taskId },
     data: {
@@ -296,14 +472,15 @@ export async function rescheduleTask(taskId: string, newDueDate: string | null) 
   return task;
 }
 
-export async function rescheduleAllOverdueTasks(targetDate?: string) {
+export async function rescheduleYesterdayTasks(targetDate?: string, yesterdayDate?: string) {
+  const userId = await getEffectiveUserId();
   const today = targetDate || getTodayString();
+  const yesterday = yesterdayDate || getYesterdayString(today);
   const result = await prisma.task.updateMany({
     where: {
+      userId,
       status: "PENDING",
-      dueDate: {
-        lt: today,
-      },
+      dueDate: yesterday,
     },
     data: {
       dueDate: today,
@@ -316,8 +493,34 @@ export async function rescheduleAllOverdueTasks(targetDate?: string) {
   return result;
 }
 
+export async function rescheduleAllOverdueTasks(targetDate?: string, sourceDate?: string) {
+  const userId = await getEffectiveUserId();
+  const today = targetDate || getTodayString();
+  const whereClause: any = {
+    userId,
+    status: "PENDING",
+  };
+  if (sourceDate) {
+    whereClause.dueDate = sourceDate;
+  } else {
+    whereClause.dueDate = { lt: today };
+  }
+  const result = await prisma.task.updateMany({
+    where: whereClause,
+    data: {
+      dueDate: today,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/seasons");
+  return result;
+}
+
 export async function deleteAllTasks() {
-  const result = await prisma.task.deleteMany({});
+  const userId = await getEffectiveUserId();
+  const result = await prisma.task.deleteMany({ where: { userId } });
   revalidatePath("/");
   revalidatePath("/tasks");
   revalidatePath("/seasons");
@@ -362,8 +565,10 @@ export async function createHabit(formData: {
   color?: string;
   goalId?: string;
 }) {
+  const userId = await getEffectiveUserId();
   const habit = await prisma.habit.create({
     data: {
+      userId,
       title: formData.title,
       description: formData.description,
       category: formData.category || "Mind",
@@ -395,6 +600,10 @@ export async function updateHabit(
     goalId?: string | null;
   }
 ) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.habit.findFirst({ where: { id: habitId, userId } });
+  if (!existing) return null;
+
   const habit = await prisma.habit.update({
     where: { id: habitId },
     data: {
@@ -417,6 +626,10 @@ export async function updateHabit(
 }
 
 export async function deleteHabit(habitId: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.habit.findFirst({ where: { id: habitId, userId } });
+  if (!existing) return null;
+
   const habit = await prisma.habit.delete({
     where: { id: habitId },
   });
@@ -428,6 +641,10 @@ export async function deleteHabit(habitId: string) {
 }
 
 export async function graduateHabit(habitId: string, note?: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.habit.findFirst({ where: { id: habitId, userId } });
+  if (!existing) return null;
+
   const habit = await prisma.habit.update({
     where: { id: habitId },
     data: {
@@ -445,6 +662,10 @@ export async function graduateHabit(habitId: string, note?: string) {
 }
 
 export async function reopenHabit(habitId: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.habit.findFirst({ where: { id: habitId, userId } });
+  if (!existing) return null;
+
   const habit = await prisma.habit.update({
     where: { id: habitId },
     data: {
@@ -462,8 +683,11 @@ export async function reopenHabit(habitId: string) {
 }
 
 export async function deleteAllHabits() {
-  await prisma.habitLog.deleteMany({});
-  const result = await prisma.habit.deleteMany({});
+  const userId = await getEffectiveUserId();
+  const userHabits = await prisma.habit.findMany({ where: { userId }, select: { id: true } });
+  const habitIds = userHabits.map((h) => h.id);
+  await prisma.habitLog.deleteMany({ where: { habitId: { in: habitIds } } });
+  const result = await prisma.habit.deleteMany({ where: { userId } });
   revalidatePath("/");
   revalidatePath("/habits");
   revalidatePath("/seasons");
@@ -504,4 +728,360 @@ export async function toggleMilestone(milestoneId: string) {
   revalidatePath("/");
   revalidatePath("/milestones");
   return updatedMilestone;
+}
+
+export async function createGoal(data: {
+  title: string;
+  description?: string;
+  category: string;
+  targetDate?: string;
+  initialMilestones?: { title: string; stage?: string }[];
+}) {
+  const userId = await getEffectiveUserId();
+  const targetDateObj = data.targetDate ? new Date(data.targetDate) : null;
+
+  const milestonesData = (data.initialMilestones || [])
+    .filter((m) => m.title && m.title.trim())
+    .map((m, idx) => ({
+      title: m.title.trim(),
+      stage: m.stage || (idx === 0 ? "Seed" : idx === 1 ? "Sprout" : "Milestone"),
+      isCompleted: false,
+      order: idx + 1,
+    }));
+
+  const goal = await prisma.goal.create({
+    data: {
+      userId,
+      title: data.title.trim(),
+      description: data.description?.trim() || null,
+      category: data.category || "Craft",
+      targetDate: targetDateObj,
+      status: "ACTIVE",
+      progressPercentage: 0,
+      milestones: {
+        create: milestonesData,
+      },
+    },
+    include: {
+      milestones: {
+        orderBy: { order: "asc" },
+      },
+      habits: true,
+      tasks: true,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return goal;
+}
+
+export async function createMilestone(data: {
+  goalId: string;
+  title: string;
+  stage?: string;
+}) {
+  const goal = await prisma.goal.findUnique({
+    where: { id: data.goalId },
+    include: { milestones: true },
+  });
+  if (!goal) return null;
+
+  const nextOrder = goal.milestones.length + 1;
+  const milestone = await prisma.milestone.create({
+    data: {
+      goalId: data.goalId,
+      title: data.title.trim(),
+      stage: data.stage || "Milestone",
+      order: nextOrder,
+      isCompleted: false,
+    },
+  });
+
+  // Recalculate goal progress
+  const totalCount = goal.milestones.length + 1;
+  const completedCount = goal.milestones.filter((m) => m.isCompleted).length;
+  const progressPercentage = Math.round((completedCount / totalCount) * 100);
+
+  await prisma.goal.update({
+    where: { id: data.goalId },
+    data: { progressPercentage },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return milestone;
+}
+
+export async function deleteMilestone(milestoneId: string) {
+  const milestone = await prisma.milestone.findUnique({
+    where: { id: milestoneId },
+    include: { goal: { include: { milestones: true } } },
+  });
+  if (!milestone) return null;
+
+  const goalId = milestone.goalId;
+  await prisma.milestone.delete({
+    where: { id: milestoneId },
+  });
+
+  // Recalculate goal progress
+  const remainingMilestones = milestone.goal.milestones.filter((m) => m.id !== milestoneId);
+  const progressPercentage =
+    remainingMilestones.length > 0
+      ? Math.round(
+        (remainingMilestones.filter((m) => m.isCompleted).length /
+          remainingMilestones.length) *
+        100
+      )
+      : 0;
+
+  await prisma.goal.update({
+    where: { id: goalId },
+    data: { progressPercentage },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return { success: true, goalId };
+}
+
+export async function deleteGoal(goalId: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.goal.findFirst({ where: { id: goalId, userId } });
+  if (!existing) return null;
+
+  // Unlink tasks and habits first
+  await prisma.task.updateMany({
+    where: { userId, goalId },
+    data: { goalId: null, milestoneId: null },
+  });
+  await prisma.habit.updateMany({
+    where: { userId, goalId },
+    data: { goalId: null },
+  });
+
+  const deleted = await prisma.goal.delete({
+    where: { id: goalId },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return deleted;
+}
+
+export async function setActiveGoal(goalId: string) {
+  const userId = await getEffectiveUserId();
+  await prisma.goal.updateMany({
+    where: { userId, id: { not: goalId }, status: "ACTIVE" },
+    data: { status: "PAUSED" },
+  });
+  const updated = await prisma.goal.update({
+    where: { id: goalId },
+    data: { status: "ACTIVE" },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return updated;
+}
+
+// ==========================================
+// 🌙 SLEEP TRACKING SERVER ACTIONS
+// ==========================================
+
+export async function logSleep(formData: {
+  date?: string;
+  bedtime: string;
+  wakeTime: string;
+  quality?: string;
+  notes?: string;
+}) {
+  const userId = await getEffectiveUserId();
+  const logDate = formData.date || getTodayString();
+  const { durationMinutes } = calculateSleepDuration(formData.bedtime, formData.wakeTime);
+
+  const sleepLog = await prisma.sleepLog.upsert({
+    where: {
+      userId_date: {
+        userId,
+        date: logDate,
+      },
+    },
+    create: {
+      userId,
+      date: logDate,
+      bedtime: formData.bedtime,
+      wakeTime: formData.wakeTime,
+      durationMinutes,
+      quality: formData.quality || "BALANCED",
+      notes: formData.notes || null,
+    },
+    update: {
+      bedtime: formData.bedtime,
+      wakeTime: formData.wakeTime,
+      durationMinutes,
+      quality: formData.quality || "BALANCED",
+      notes: formData.notes !== undefined ? formData.notes : undefined,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return sleepLog;
+}
+
+export async function updateSleepTarget(targetHours: number) {
+  const userId = await getEffectiveUserId();
+  const safeTarget = Math.max(4.0, Math.min(14.0, targetHours));
+  const setting = await prisma.sleepSetting.upsert({
+    where: { userId },
+    create: { userId, targetHours: safeTarget },
+    update: { targetHours: safeTarget },
+  });
+
+  revalidatePath("/");
+  return setting;
+}
+
+export async function deleteSleepLog(id: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.sleepLog.findFirst({ where: { id, userId } });
+  if (!existing) return null;
+
+  const deleted = await prisma.sleepLog.delete({
+    where: { id },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/seasons");
+  revalidatePath("/growth");
+  return deleted;
+}
+
+export async function getSleepData() {
+  const userId = await getEffectiveUserId();
+  const today = getTodayString();
+  const setting = await prisma.sleepSetting.findUnique({
+    where: { userId },
+  });
+  const targetHours = setting?.targetHours ?? 8.0;
+
+  const todaySleepLog = await prisma.sleepLog.findUnique({
+    where: {
+      userId_date: {
+        userId,
+        date: today,
+      },
+    },
+  });
+
+  const sleepLogs = await prisma.sleepLog.findMany({
+    where: { userId },
+    orderBy: { date: "desc" },
+    take: 60,
+  });
+
+  return {
+    today,
+    targetHours,
+    todayLog: todaySleepLog,
+    allLogs: sleepLogs,
+  };
+}
+
+// ==========================================
+// 📝 NOTES ACTIONS
+// ==========================================
+
+export async function getNotes() {
+  const userId = await getEffectiveUserId();
+  const notes = await prisma.note.findMany({
+    where: { userId },
+    orderBy: [
+      { isPinned: "desc" },
+      { updatedAt: "desc" },
+    ],
+  });
+  return notes;
+}
+
+export async function createNote(data?: {
+  title?: string;
+  content?: string;
+  category?: string;
+  isPinned?: boolean;
+  color?: string;
+}) {
+  const userId = await getEffectiveUserId();
+  const newNote = await prisma.note.create({
+    data: {
+      userId,
+      title: data?.title?.trim() || "Untitled Note",
+      content: data?.content ?? "",
+      category: data?.category ?? "General",
+      isPinned: data?.isPinned ?? false,
+      color: data?.color ?? null,
+    },
+  });
+
+  revalidatePath("/notes");
+  return newNote;
+}
+
+export async function updateNote(
+  id: string,
+  data: {
+    title?: string;
+    content?: string;
+    category?: string;
+    isPinned?: boolean;
+    color?: string | null;
+  }
+) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.note.findFirst({ where: { id, userId } });
+  if (!existing) return null;
+
+  const updated = await prisma.note.update({
+    where: { id },
+    data: {
+      ...(data.title !== undefined ? { title: data.title.trim() || "Untitled Note" } : {}),
+      ...(data.content !== undefined ? { content: data.content } : {}),
+      ...(data.category !== undefined ? { category: data.category } : {}),
+      ...(data.isPinned !== undefined ? { isPinned: data.isPinned } : {}),
+      ...(data.color !== undefined ? { color: data.color } : {}),
+    },
+  });
+
+  revalidatePath("/notes");
+  return updated;
+}
+
+export async function deleteNote(id: string) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.note.findFirst({ where: { id, userId } });
+  if (!existing) return null;
+
+  const deleted = await prisma.note.delete({
+    where: { id },
+  });
+
+  revalidatePath("/notes");
+  return deleted;
+}
+
+export async function togglePinNote(id: string) {
+  const userId = await getEffectiveUserId();
+  const note = await prisma.note.findFirst({ where: { id, userId } });
+  if (!note) return null;
+
+  const updated = await prisma.note.update({
+    where: { id },
+    data: { isPinned: !note.isPinned },
+  });
+
+  revalidatePath("/notes");
+  return updated;
 }
