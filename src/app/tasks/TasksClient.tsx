@@ -31,9 +31,10 @@ import {
   deleteTask, 
   reorderTasks, 
   rescheduleTask, 
+  rescheduleYesterdayTasks,
   rescheduleAllOverdueTasks 
 } from "@/lib/actions";
-import { formatTaskDateHeading, TaskDateGroupMeta } from "@/lib/utils";
+import { formatTaskDateHeading, getYesterdayString, TaskDateGroupMeta } from "@/lib/utils";
 import { TodayClockDial } from "@/components/tasks/TodayClockDial";
 
 interface Goal {
@@ -173,9 +174,11 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
     return d.toISOString().split("T")[0];
   };
 
-  const overdueTasks = useMemo(() => {
-    return tasks.filter((t) => t.status === "PENDING" && t.dueDate && t.dueDate < today);
-  }, [tasks, today]);
+  const yesterday = useMemo(() => getYesterdayString(today), [today]);
+
+  const yesterdayTasks = useMemo(() => {
+    return tasks.filter((t) => t.status === "PENDING" && t.dueDate === yesterday);
+  }, [tasks, yesterday]);
 
   const todayTasks = useMemo(() => {
     return tasks.filter((t) => t.dueDate === today);
@@ -390,17 +393,17 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
     } catch {
       // Ignore
     }
-    // Optimistic update
+    // Optimistic update: only reschedule tasks from yesterday
     setTasks((prev) =>
       prev.map((t) =>
-        t.status === "PENDING" && t.dueDate && t.dueDate < today
+        t.status === "PENDING" && t.dueDate === yesterday
           ? { ...t, dueDate: today }
           : t
       )
     );
 
     startTransition(async () => {
-      await rescheduleAllOverdueTasks(today);
+      await rescheduleYesterdayTasks(today, yesterday);
     });
   };
 
@@ -622,9 +625,9 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Morning Reset: Reschedule All Overdue to Today Banner (At very top of the page) */}
-      {overdueTasks.length > 0 && !dismissedOverdueBanner && (
+    <div className="space-y-8 w-full">
+      {/* Morning Reset: Reschedule Yesterday's Intentions to Today Banner (At very top of the page) */}
+      {yesterdayTasks.length > 0 && !dismissedOverdueBanner && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-3xl bg-[#FAF6EE] border border-[#EADFC7] shadow-xs text-xs text-[#1A241E] animate-in fade-in duration-300">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl bg-[#EFE3D3] border border-[#E2D2BC] flex items-center justify-center shrink-0 text-[#C87452]">
@@ -632,7 +635,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
             </div>
             <div>
               <p className="font-serif text-sm font-semibold text-[#1A241E]">
-                Morning Reset: {overdueTasks.length} {overdueTasks.length === 1 ? "intention" : "intentions"} left from previous days
+                Morning Reset: {yesterdayTasks.length} {yesterdayTasks.length === 1 ? "intention" : "intentions"} left from yesterday
               </p>
               <p className="text-[11px] text-[#586B60] mt-0.5">
                 Bring unfinished intentions directly into today&apos;s focus with one click.
@@ -647,7 +650,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] font-semibold text-xs hover:bg-[#2A3F34] transition-all shadow-2xs cursor-pointer"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reschedule All to Today</span>
+              <span>Reschedule to Today</span>
             </button>
             <button
               type="button"
