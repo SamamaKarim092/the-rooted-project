@@ -1,13 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BookOpen, CheckCircle2, Sparkles, TrendingUp } from "lucide-react";
 import { DailyIntentionsCard } from "./DailyIntentionsCard";
-import { HabitGrowthMatrix } from "./HabitGrowthMatrix";
+import { TodayRitualsCard } from "./TodayRitualsCard";
 import { LongTermVisionCard } from "./LongTermVisionCard";
-import { WeeklyFlowCard } from "./WeeklyFlowCard";
-import { DashboardTaskOverview } from "./DashboardTaskOverview";
+import { SleepClockCard } from "./SleepClockCard";
 import { PeriodicReviewModal } from "./PeriodicReviewModal";
+import { MorningSleepDialog } from "@/components/sleep/MorningSleepDialog";
 import { getWeekKey } from "@/lib/utils";
 
 interface DashboardMainViewProps {
@@ -17,6 +16,7 @@ interface DashboardMainViewProps {
     allTasks: any[];
     habits: any[];
     habitMatrix: any[];
+    activeGoals?: any[];
     activeGoal: any;
     metrics: {
       harmonyScore: number;
@@ -25,17 +25,36 @@ interface DashboardMainViewProps {
       totalIntentions: number;
     };
     weeklyFlow: any[];
+    sleep?: {
+      targetHours: number;
+      todayLog: any | null;
+      allLogs: any[];
+    };
   };
 }
 
 export function DashboardMainView({ data }: DashboardMainViewProps) {
-  const [activeTab, setActiveTab] = useState<"JOURNAL" | "TASK">("JOURNAL");
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewMode, setReviewMode] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
 
-  // Automatic periodic retrospective detection on session open
+  // Sleep Dialog State
+  const [showSleepModal, setShowSleepModal] = useState(false);
+  const [sleepDateToEdit, setSleepDateToEdit] = useState<string | undefined>(undefined);
+
+  // Automatic Morning Sleep Check-in Detection & Periodic Retrospective Detection
   useEffect(() => {
     try {
+      // 1. Morning Sleep Check-in Auto-Popup
+      // If no sleep log exists for today, and user hasn't dismissed it today:
+      const dismissedSleepDate = localStorage.getItem("rooted_sleep_dismissed_date");
+      const hasTodaySleep = Boolean(data.sleep?.todayLog);
+
+      if (!hasTodaySleep && dismissedSleepDate !== data.today) {
+        setShowSleepModal(true);
+        return; // Prioritize morning sleep check-in
+      }
+
+      // 2. Periodic Review Detection (if sleep already settled)
       const currentWeekKey = getWeekKey(data.today);
       const currentMonthKey = data.today.slice(0, 7);
       const lastReviewedWeek = localStorage.getItem("rooted_last_reviewed_week");
@@ -58,93 +77,57 @@ export function DashboardMainView({ data }: DashboardMainViewProps) {
     } catch {
       // Ignore if localStorage unavailable
     }
-  }, [data.today]);
+  }, [data.today, data.sleep?.todayLog]);
+
+  const targetHours = data.sleep?.targetHours ?? 8.0;
+
+  // Calculate yesterday's date & log for reference
+  const yesterdayDateStr = (() => {
+    const dObj = new Date(data.today + "T00:00:00");
+    dObj.setDate(dObj.getDate() - 1);
+    return dObj.toISOString().split("T")[0];
+  })();
+
+  const yesterdayLog =
+    data.sleep?.allLogs?.find((l: any) => l.date === yesterdayDateStr) ||
+    data.sleep?.allLogs?.find((l: any) => l.date < data.today) ||
+    null;
 
   return (
-    <div className="space-y-7">
-      {/* Dashboard View Tab Switcher & Retrospective Trigger */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#EAE5D8] pb-4">
-        <div className="flex items-center gap-2 bg-[#FFFFFF] p-1.5 rounded-2xl border border-[#EAE5D8] shadow-2xs">
-          <button
-            onClick={() => setActiveTab("JOURNAL")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-              activeTab === "JOURNAL"
-                ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
-                : "text-[#586B60] hover:text-[#1A241E]"
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>Journal</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("TASK")}
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-              activeTab === "TASK"
-                ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
-                : "text-[#586B60] hover:text-[#1A241E]"
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            <span>Task</span>
-          </button>
+    <div className="space-y-7 w-full">
+      {/* 2x2 Canonical Dashboard Grid matching design concept 7 */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-7 w-full">
+        {/* Top-Left: Daily Intentions (Dark Forest Green #1E3127) */}
+        <div className="min-h-[380px] w-full">
+          <DailyIntentionsCard tasks={data.tasks} />
         </div>
 
-        {/* Right side: Manual Retrospective Trigger & View Label */}
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setReviewMode("WEEKLY");
-              setShowReviewModal(true);
-            }}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-[#FAF6EE] border border-[#EADFC7] text-[#C87452] hover:bg-[#F2E7D5] hover:text-[#1E3127] text-xs font-semibold shadow-2xs transition-all cursor-pointer"
-            title="Open Weekly & Monthly Retrospective Analysis"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#D4A373]" />
-            <span>Rhythm Review</span>
-          </button>
+        {/* Top-Right: Today's Rituals (Off-White #FFFFFF) */}
+        <div className="min-h-[380px] w-full">
+          <TodayRitualsCard habits={data.habits} today={data.today} />
+        </div>
 
-          <div className="hidden md:flex items-center gap-2 text-xs text-[#586B60]">
-            <span>
-              {activeTab === "JOURNAL"
-                ? "Daily Intentions & Habit Flow"
-                : "Weekly & Monthly Task Tracking"}
-            </span>
-          </div>
+        {/* Bottom-Left: Long-Term Vision (Dark Forest Green #1E3127) */}
+        <div className="min-h-[320px] w-full">
+          <LongTermVisionCard
+            goal={data.activeGoal}
+            goals={data.activeGoals || (data.activeGoal ? [data.activeGoal] : [])}
+          />
+        </div>
+
+        {/* Bottom-Right: Rest Sanctuary Clock (Off-White #FFFFFF) */}
+        <div className="min-h-[320px] w-full">
+          <SleepClockCard
+            todayLog={data.sleep?.todayLog ?? null}
+            targetHours={targetHours}
+            yesterdayLog={yesterdayLog}
+            onOpenSleepDialog={(dateToEdit) => {
+              setSleepDateToEdit(dateToEdit || data.today);
+              setShowSleepModal(true);
+            }}
+          />
         </div>
       </div>
-
-      {/* VIEW 1: JOURNAL (CANONICAL DESIGN CONCEPT 6 GRID) */}
-      {activeTab === "JOURNAL" ? (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-7">
-          {/* Top-Left: Daily Intentions (Dark Forest Green) */}
-          <div className="min-h-[380px]">
-            <DailyIntentionsCard tasks={data.tasks} />
-          </div>
-
-          {/* Top-Right: Habit Growth (Light Cream) */}
-          <div className="min-h-[380px]">
-            <HabitGrowthMatrix habits={data.habitMatrix} />
-          </div>
-
-          {/* Bottom-Left: Long-Term Vision (Dark Forest Green) */}
-          <div className="min-h-[300px]">
-            <LongTermVisionCard goal={data.activeGoal} />
-          </div>
-
-          {/* Bottom-Right: Weekly Flow (Light Cream) */}
-          <div className="min-h-[300px]">
-            <WeeklyFlowCard
-              weeklyFlow={data.weeklyFlow}
-              harmonyGauge={data.metrics.harmonyScore}
-            />
-          </div>
-        </div>
-      ) : (
-        /* VIEW 2: TASK (WEEKLY & MONTHLY TASK OVERVIEW) */
-        <DashboardTaskOverview allTasks={data.allTasks} today={data.today} />
-      )}
 
       {/* Periodic Weekly & Monthly Retrospective Dialog */}
       <PeriodicReviewModal
@@ -156,6 +139,45 @@ export function DashboardMainView({ data }: DashboardMainViewProps) {
         activeGoal={data.activeGoal}
         initialMode={reviewMode}
       />
+
+      {/* Morning Sleep Check-in Modal */}
+      {(() => {
+        const activeCheckinDate = sleepDateToEdit || data.today;
+        const dObj = new Date(activeCheckinDate + "T00:00:00");
+        dObj.setDate(dObj.getDate() - 1);
+        const checkinYesterdayDate = dObj.toISOString().split("T")[0];
+
+        const refYesterdayLog =
+          data.sleep?.allLogs?.find((l: any) => l.date === checkinYesterdayDate) ||
+          data.sleep?.allLogs?.find((l: any) => l.date < activeCheckinDate);
+
+        const yesterdayBedtime = refYesterdayLog?.bedtime || "11:00 PM";
+        const yesterdayWakeTime = refYesterdayLog?.wakeTime || "07:30 AM";
+
+        const existingDateLog =
+          sleepDateToEdit && sleepDateToEdit !== data.today
+            ? data.sleep?.allLogs?.find((l: any) => l.date === sleepDateToEdit)
+            : data.sleep?.todayLog;
+
+        const initialBedtime = existingDateLog?.bedtime || yesterdayBedtime;
+        const initialWakeTime = existingDateLog?.wakeTime || yesterdayWakeTime;
+
+        return (
+          <MorningSleepDialog
+            isOpen={showSleepModal}
+            onClose={() => {
+              setShowSleepModal(false);
+              setSleepDateToEdit(undefined);
+            }}
+            today={activeCheckinDate}
+            initialBedtime={initialBedtime}
+            initialWakeTime={initialWakeTime}
+            yesterdayBedtime={yesterdayBedtime}
+            yesterdayWakeTime={yesterdayWakeTime}
+            targetHours={targetHours}
+          />
+        );
+      })()}
     </div>
   );
 }
