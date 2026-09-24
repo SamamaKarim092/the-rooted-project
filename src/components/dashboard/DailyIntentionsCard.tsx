@@ -66,13 +66,23 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
     <div className="bg-[#1E3127] text-[#FAF7F0] rounded-3xl p-7 md:p-8 border border-[#2D4336] shadow-sm flex flex-col justify-between h-full">
       <div>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="font-serif text-2xl md:text-3xl font-semibold tracking-tight text-[#FAF7F0]">
-            Daily Intentions
-          </h3>
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h3 className="font-serif text-2xl md:text-3xl font-semibold tracking-tight text-[#FAF7F0]">
+                Daily Intentions
+              </h3>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-[#2A3F34] text-[#D4A373] border border-[#3E5C4B]/60 font-semibold">
+                {tasks.filter((t) => t.status === "COMPLETED").length} of {tasks.length}
+              </span>
+            </div>
+            <p className="text-xs text-[#8FA697] mt-0.5">
+              Strictly today&apos;s conscious focus
+            </p>
+          </div>
           <button
             onClick={() => setShowAddModal(true)}
-            className="w-9 h-9 rounded-full bg-[#2A3F34] hover:bg-[#354D40] text-[#E0DAD0] flex items-center justify-center transition-colors"
+            className="w-9 h-9 rounded-full bg-[#2A3F34] hover:bg-[#354D40] text-[#FAF7F0] flex items-center justify-center transition-colors cursor-pointer"
             title="Add Intention"
           >
             <Plus className="w-4 h-4" />
@@ -80,7 +90,7 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
         </div>
 
         {/* Task Items Checklist */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {tasks.length === 0 ? (
             <div className="py-12 text-center text-[#8FA697]">
               <p className="text-sm font-medium">No daily intentions yet.</p>
@@ -92,45 +102,53 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
             tasks.map((task) => {
               const isCompleted = task.status === "COMPLETED";
 
-            return (
-              <div
-                key={task.id}
-                onClick={() => handleToggle(task.id)}
-                className="group flex items-center justify-between gap-4 py-2 border-b border-[#2D4336]/60 cursor-pointer select-none transition-opacity hover:opacity-95"
-              >
-                {/* Left: Check trigger + Title + Pill tags */}
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all duration-200 shrink-0 ${
-                      isCompleted
-                        ? "bg-[#D4A373] border-[#D4A373] text-[#1E3127]"
-                        : "border-[#8FA697] group-hover:border-[#FAF7F0]"
-                    }`}
-                  >
-                    {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+              return (
+                <div
+                  key={task.id}
+                  onClick={() => handleToggle(task.id)}
+                  className="group flex items-center justify-between gap-3 py-2.5 border-b border-[#2D4336]/60 cursor-pointer select-none transition-opacity hover:opacity-90"
+                >
+                  {/* Left: Check trigger + Title + Pill tags */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center border transition-all duration-200 shrink-0 ${
+                        isCompleted
+                          ? "bg-[#D4A373] border-[#D4A373] text-[#1E3127]"
+                          : "border-[#8FA697] group-hover:border-[#FAF7F0]"
+                      }`}
+                    >
+                      {isCompleted && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    </div>
+
+                    <span
+                      className={`text-sm md:text-base font-normal tracking-wide truncate transition-all ${
+                        isCompleted
+                          ? "line-through text-[#8FA697]"
+                          : "text-[#FAF7F0]"
+                      }`}
+                    >
+                      {task.title}
+                    </span>
+
+                    {/* Category Pill Tag */}
+                    {task.category && (
+                      <span
+                        className={`text-[11px] px-2 py-0.5 rounded-full font-medium tracking-wide shrink-0 ${getCategoryBadge(
+                          task.category
+                        )}`}
+                      >
+                        {task.category}
+                      </span>
+                    )}
                   </div>
 
-                  <span
-                    className={`text-base font-normal tracking-wide truncate transition-all ${
-                      isCompleted
-                        ? "line-through text-[#8FA697]"
-                        : "text-[#FAF7F0]"
-                    }`}
-                  >
-                    {task.title}
-                  </span>
-
-                  {/* Category Pill Tag */}
-                  {task.category && (
-                    <span
-                      className={`text-xs px-2.5 py-0.5 rounded-full font-medium tracking-wide shrink-0 ${getCategoryBadge(
-                        task.category
-                      )}`}
-                    >
-                      {task.category}
-                    </span>
+                  {/* Right: Due Time if specified */}
+                  {task.dueTime && (
+                    <div className="flex items-center gap-1 text-xs text-[#8FA697] font-mono shrink-0">
+                      <Clock className="w-3 h-3 text-[#D4A373]" />
+                      <span>{task.dueTime}</span>
+                    </div>
                   )}
-                </div>
                 </div>
               );
             })
