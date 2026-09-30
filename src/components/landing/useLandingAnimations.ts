@@ -84,8 +84,10 @@ export function useLandingAnimations() {
               const rect = el.getBoundingClientRect();
               if (rect.bottom > 0 && rect.top < window.innerHeight) {
                 const speed = parseFloat(el.dataset.parallax || "0.2");
-                const isContact = el.closest("#contact") !== null;
-                const offset = (window.scrollY * speed * (isContact ? -0.25 : 1)) % 600;
+                const isHero = el.closest("header") !== null;
+                const offset = isHero
+                  ? window.scrollY * speed
+                  : (rect.top - window.innerHeight * 0.5) * speed;
                 el.style.transform = `translateY(${offset.toFixed(1)}px)`;
               }
             });
