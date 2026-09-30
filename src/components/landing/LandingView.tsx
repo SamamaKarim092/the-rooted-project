@@ -143,7 +143,7 @@ export function LandingView({ user }: LandingViewProps) {
       {/* ============================================================= */}
       {/* 2. SELECTED PRACTICE REEL (4 Asymmetric Panels)              */}
       {/* ============================================================= */}
-      <section id="practice" className="relative pt-28 sm:pt-36 pb-16 bg-[#FAF7F0]">
+      <section id="practice" className="relative pt-28 sm:pt-36 pb-0 bg-[#FAF7F0]">
         <div className="max-w-7xl mx-auto px-6 sm:px-10">
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between mb-14" data-reveal="">
             <div>
@@ -260,16 +260,16 @@ export function LandingView({ user }: LandingViewProps) {
         </div>
 
         {/* Panel 04: Full Bleed Banner (Seasons & Mindful Rest) */}
-        <div className="max-w-7xl mx-auto px-6 sm:px-10">
-          <div className="relative rounded-3xl overflow-hidden aspect-[16/12] sm:aspect-[21/9] shadow-2xl shadow-[#1A241E]/10 border border-[#EAE5D8]">
-            <img
-              data-panel-img=""
-              src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/4734259a-bad7-422f-981e-ce01e79184f2_1600w.jpg"
-              alt="Seasons & Mindful Rest"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-            <div className="absolute bottom-0 left-0 w-full p-6 sm:p-12 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 text-white">
+        <div className="relative w-full overflow-hidden aspect-[16/12] sm:aspect-[21/9]">
+          <img
+            data-panel-img=""
+            src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/4734259a-bad7-422f-981e-ce01e79184f2_1600w.jpg"
+            alt="Seasons & Mindful Rest"
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
+          <div className="absolute bottom-0 left-0 w-full">
+            <div className="max-w-7xl mx-auto px-6 sm:px-10 pb-8 sm:pb-12 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6 text-white">
               <div data-reveal="">
                 <p className="text-xs text-[#D98A6C] font-semibold tracking-wider mb-2">04 / SEASONS & REST</p>
                 <h3
@@ -526,7 +526,7 @@ export function LandingView({ user }: LandingViewProps) {
       {/* ============================================================= */}
       {/* 5. MINDFUL PROOF & REFLECTION                                 */}
       {/* ============================================================= */}
-      <section id="reflection" className="bg-[#FAF7F0] py-28 sm:py-36">
+      <section id="reflection" className="bg-[#FAF7F0] pt-24 sm:pt-32 pb-16 sm:pb-20">
         <div className="max-w-7xl mx-auto px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 items-center">
           <div className="lg:col-span-5 order-2 lg:order-1" data-reveal="">
             <div className="rounded-3xl overflow-hidden aspect-[4/5] shadow-2xl shadow-[#1A241E]/10 border border-[#EAE5D8]">
@@ -557,20 +557,61 @@ export function LandingView({ user }: LandingViewProps) {
       </section>
 
       {/* ============================================================= */}
-      {/* 6. FINAL CTA & CROPPED PARALLAX WORDMARK                     */}
+      {/* 5.5. ANIMATED ROOTED PARALLAX INTERLUDE                       */}
       {/* ============================================================= */}
-      <section id="contact" className="relative overflow-hidden pt-12 pb-24 sm:pb-32 bg-[#FAF7F0] border-t border-[#EAE5D8]">
-        {/* Giant Cropped Outline Typography */}
-        <div className="overflow-hidden select-none pointer-events-none" data-parallax="0.25">
+      <section className="relative overflow-hidden py-24 sm:py-36 bg-[#FAF7F0] border-t border-[#EAE5D8]">
+        {/* Floating Ambient Translucent Forms (Matching Hero Animation) */}
+        <div className="absolute inset-0 pointer-events-none z-[1]" data-parallax="0.2">
+          <div className="drift-a absolute top-[14%] left-[6%] w-36 h-36 sm:w-56 sm:h-56 rounded-full bg-gradient-to-br from-[#7C9A86]/20 to-transparent backdrop-blur-xs border border-[#7C9A86]/20 shadow-[inset_0_0_40px_rgba(124,154,134,0.15)]" />
+          <div className="drift-b absolute bottom-[14%] right-[8%] w-40 h-40 sm:w-60 sm:h-60 rounded-[45%] bg-gradient-to-tl from-[#D98A6C]/20 to-transparent backdrop-blur-xs border border-[#D98A6C]/20 shadow-[inset_0_0_40px_rgba(217,138,108,0.12)]" />
+          <div className="drift-c absolute top-[42%] right-[32%] w-20 h-20 sm:w-28 sm:h-28 rounded-full bg-[#1E3127]/5 border border-[#1E3127]/10" />
+        </div>
+
+        {/* Giant Cropped Animated Parallax Wordmark ("ROOTED") */}
+        <div
+          className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0 overflow-hidden"
+          data-parallax="0.32"
+        >
           <p
-            className="text-[14vw] leading-[0.85] text-[#1E3127]/5 whitespace-nowrap text-center -mb-[2vw] font-normal tracking-tighter"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
+            className="text-[24vw] sm:text-[21vw] leading-none text-center font-normal tracking-tight text-[#1E3127]/[0.08] whitespace-nowrap"
+            style={{
+              fontFamily: "'Instrument Serif', serif",
+              WebkitTextStroke: "1.5px rgba(30, 49, 39, 0.2)",
+            }}
           >
-            ROOTED IN RHYTHM
+            ROOTED
           </p>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 sm:px-10 py-16 sm:py-24 grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 items-center">
+        {/* Foreground Editorial Statement */}
+        <div className="relative z-10 max-w-4xl mx-auto px-6 sm:px-10 text-center" data-reveal="">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1E3127]/5 border border-[#1E3127]/10 text-xs font-semibold uppercase tracking-[0.22em] text-[#1E3127] mb-6 font-sans">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7C9A86] animate-pulse" />
+            <span>The Rhythm of Life Architecture</span>
+          </div>
+
+          <h3
+            className="text-4xl sm:text-6xl md:text-7xl font-normal leading-[1.05] tracking-tight text-[#1A241E] max-w-3xl mx-auto"
+            style={{ fontFamily: "'Instrument Serif', serif" }}
+            data-reveal-words="true"
+          >
+            Small daily seeds yield{" "}
+            <em className="italic font-normal text-[#7C9A86]">towering groves</em>{" "}
+            over seasons.
+          </h3>
+
+          <p className="mt-6 sm:mt-8 text-base sm:text-lg text-[#586B60] max-w-xl mx-auto font-sans leading-relaxed">
+            Every 20-minute intention planted today becomes the milestone you celebrate tomorrow. 
+            No frantic hustle. Just grounded, enduring progress.
+          </p>
+        </div>
+      </section>
+
+      {/* ============================================================= */}
+      {/* 6. FINAL CTA SECTION                                          */}
+      {/* ============================================================= */}
+      <section id="contact" className="relative overflow-hidden py-20 sm:py-28 bg-[#FAF7F0] border-t border-[#EAE5D8]">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 grid grid-cols-1 lg:grid-cols-12 gap-12 sm:gap-16 items-center">
           <div className="lg:col-span-6" data-reveal="">
             <p className="text-xs uppercase tracking-[0.25em] text-[#7C9A86] font-semibold mb-4">
               Begin Your Practice
