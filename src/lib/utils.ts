@@ -365,3 +365,25 @@ export function stepTimeString(currentTime: string, deltaMinutes: number): strin
   return formatMinutesTo12Hour(mins + deltaMinutes);
 }
 
+/**
+ * Calculates current consecutive streak up to 60 days back.
+ * If today is not yet checked off, checks from yesterday backwards without breaking.
+ */
+export function calculateStreak(logs: { date: string; completed?: boolean }[]): number {
+  let currentStreak = 0;
+  for (let i = 0; i < 60; i++) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split("T")[0];
+    const log = logs.find((l) => l.date === dateStr);
+    if (log?.completed) {
+      currentStreak++;
+    } else {
+      if (i === 0) continue; // Today not checked off yet, check yesterday
+      break;
+    }
+  }
+  return currentStreak;
+}
+
+
