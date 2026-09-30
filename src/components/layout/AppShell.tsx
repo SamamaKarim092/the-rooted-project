@@ -2,26 +2,12 @@
 
 import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const { isSignedIn } = useAuth();
-  const [isLandingPreview, setIsLandingPreview] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.search.includes("landing=true")) {
-      setIsLandingPreview(true);
-    } else {
-      setIsLandingPreview(false);
-    }
-  }, [pathname]);
-
   const isAuthPage = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
-  const isLandingOnRoot = pathname === "/" && (!isSignedIn || isLandingPreview);
-  const isStandalonePage = isAuthPage || isLandingOnRoot;
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -42,7 +28,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [sidebarOpen]);
 
-  if (isStandalonePage) {
+  if (isAuthPage) {
     return <div className="min-h-screen w-full">{children}</div>;
   }
 

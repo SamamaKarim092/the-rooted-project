@@ -1076,3 +1076,31 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - **Validation**:
   - Fetched live HTML from https://the-rooted-project.vercel.app/ with status 200 OK.
   - Verified full rendering of the video hero, liquid glass navigation, and all section pillars.
+
+---
+
+### Step 43: Sidebar Persistent Layout Fix & Universal Page Loading Skeletons
+- **User Directive**:
+  - Make sure the sidebar displays properly on the main page (`/`), matching standard web app design patterns.
+  - Implement comprehensive, professional loading skeletons for all pages across the application.
+- **Root Cause & Fix for Sidebar**:
+  - `src/components/layout/AppShell.tsx`:
+    - Previously evaluated `const isLandingOnRoot = pathname === "/" && (!isSignedIn || isLandingPreview);` using client-side `useAuth()`.
+    - During initial hydration and client auth resolution, `isSignedIn` evaluated to `undefined`/`false`, inadvertently stripping both the desktop sidebar and mobile top bar from the authenticated dashboard on the root route.
+    - Removed `isLandingOnRoot` condition from `AppShell`. The app layout now persistently mounts the sticky desktop sidebar (`md+`) and mobile hamburger bar across all application routes.
+  - `src/components/landing/LandingView.tsx`:
+    - Updated container to `fixed inset-0 z-50 overflow-y-auto overflow-x-hidden bg-[#FAF7F0]` so that when rendered for unauthenticated guests, it seamlessly takes over the full viewport without layout shifting.
+- **Universal Loading Skeletons Implemented**:
+  - Authored tailored, organic botanical skeletons matching the design tokens (`#FAF7F0`, `#EAE5D8`, `#1E3127`, `#2A3F34`):
+    1. `src/app/loading.tsx`: Dashboard skeleton with header capsule bar, dark forest Daily Intentions card, cream Today's Rituals card, Long-Term Vision ladder, and Rest Sanctuary sleep dial.
+    2. `src/app/tasks/loading.tsx`: Horizon cards, category filter pills, priority indicators, and checkbox shimmers.
+    3. `src/app/habits/loading.tsx`: Active habit cards, streak counters, and 7-day dot matrix consistency grids.
+    4. `src/app/seasons/loading.tsx`: Month navigator header, monthly metrics summary, and calendar day grid.
+    5. `src/app/milestones/loading.tsx`: Life Vision header, progress bars, and botanical stage stepper cards.
+    6. `src/app/growth/loading.tsx`: Top metric cards and consistency chart bar shimmers.
+    7. `src/app/notes/loading.tsx`: Master-detail note list and editor canvas.
+    8. `src/app/settings/loading.tsx`: Profile avatar, AI connector keys, and preference rows.
+- **Validation**:
+  - TypeScript check (`npx tsc --noEmit`) verified with 0 errors.
+  - Production build (`npm run build`) passed with 0 errors across all routes.
+
