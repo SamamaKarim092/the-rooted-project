@@ -281,23 +281,45 @@ export function NotesClient({ initialNotes }: NotesClientProps) {
     }
   };
 
-  // Relative Date Formatter
+  // Accurate Calendar Date Formatter
   const formatNoteDate = (dateVal: Date | string) => {
     try {
       const date = new Date(dateVal);
+      if (isNaN(date.getTime())) return "";
+
       const now = new Date();
-      const diffMs = now.getTime() - date.getTime();
-      const diffMins = Math.floor(diffMs / (1000 * 60));
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-      if (diffMins < 1) return "Just now";
-      if (diffMins < 60) return `${diffMins}m ago`;
-      if (diffHours < 24) return `${diffHours}h ago`;
-      if (diffDays === 1) return "Yesterday";
-      if (diffDays < 7) return `${diffDays}d ago`;
+      // Check calendar days
+      const isToday =
+        date.getFullYear() === now.getFullYear() &&
+        date.getMonth() === now.getMonth() &&
+        date.getDate() === now.getDate();
 
-      return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const yesterday = new Date(now);
+      yesterday.setDate(now.getDate() - 1);
+      const isYesterday =
+        date.getFullYear() === yesterday.getFullYear() &&
+        date.getMonth() === yesterday.getMonth() &&
+        date.getDate() === yesterday.getDate();
+
+      if (isToday) {
+        return "Today";
+      }
+
+      if (isYesterday) {
+        return "Yesterday";
+      }
+
+      // If written before yesterday, display the actual calendar date (e.g. "Sep 19" or "Sep 19, 2026")
+      const isSameYear = date.getFullYear() === now.getFullYear();
+      if (isSameYear) {
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      }
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      });
     } catch {
       return "";
     }
@@ -308,7 +330,7 @@ export function NotesClient({ initialNotes }: NotesClientProps) {
   const charCount = description.length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full">
       {/* Top Header Row */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -466,9 +488,12 @@ export function NotesClient({ initialNotes }: NotesClientProps) {
                             >
                               {note.category}
                             </span>
-                            <span className="flex items-center gap-1">
+                            <span
+                              className="flex items-center gap-1"
+                              title={`Written on ${new Date(note.createdAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}`}
+                            >
                               <Clock className="w-3 h-3" />
-                              {formatNoteDate(note.updatedAt)}
+                              {formatNoteDate(note.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -527,9 +552,12 @@ export function NotesClient({ initialNotes }: NotesClientProps) {
                             >
                               {note.category}
                             </span>
-                            <span className="flex items-center gap-1">
+                            <span
+                              className="flex items-center gap-1"
+                              title={`Written on ${new Date(note.createdAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}`}
+                            >
                               <Clock className="w-3 h-3" />
-                              {formatNoteDate(note.updatedAt)}
+                              {formatNoteDate(note.createdAt)}
                             </span>
                           </div>
                         </div>
@@ -678,6 +706,14 @@ export function NotesClient({ initialNotes }: NotesClientProps) {
               <span>{wordCount} {wordCount === 1 ? "word" : "words"}</span>
               <span>·</span>
               <span>{charCount} characters</span>
+              {selectedNote && (
+                <>
+                  <span>·</span>
+                  <span title={`Written on ${new Date(selectedNote.createdAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" })}`}>
+                    Written {formatNoteDate(selectedNote.createdAt)}
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-2">

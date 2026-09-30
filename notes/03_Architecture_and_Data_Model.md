@@ -81,13 +81,17 @@ erDiagram
         string id PK
         string goalId FK
         string title
+        string stage "Seed | Sprout | Milestone"
         boolean isCompleted
         int order
         datetime completedAt
+        datetime createdAt
+        datetime updatedAt
     }
 
     Habit {
         string id PK
+        string userId
         string title
         string description
         string category "Mind | Body | Craft | Spirit"
@@ -96,6 +100,8 @@ erDiagram
         int targetValue
         string unit
         string goalId FK
+        datetime createdAt
+        datetime updatedAt
     }
 
     HabitLog {
@@ -104,6 +110,8 @@ erDiagram
         string date "YYYY-MM-DD"
         boolean completed
         int value
+        string note
+        datetime createdAt
     }
 
     Task {

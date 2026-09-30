@@ -6,35 +6,39 @@ Parent: [[00_Index]] | Previous: [[03_Architecture_and_Data_Model]] | Next: [[05
 
 ## 🖥️ Screen-by-Screen Breakdown
 
-### 1. Dashboard (`/` or Journal)
-The main hub directly matching **`design_concept_6.jpg`**, enhanced with a seamless dual-view tab switcher:
-- **Header**:
-  - Greeting: "Good morning, Alex" (dynamic time-of-day greeting).
-  - Floating capsules: Harmony % (e.g. `91%`), Days Rooted streak (e.g. `24 Days`), Daily Intentions completed/total (e.g. `0 of 2`).
-- **View Switcher Tabs**:
-  - **`Journal` Tab**: The canonical 4-card grid faithful to `design_concept_6.jpg`:
-    - **Daily Intentions Card (Forest Dark)**: Today's priority tasks and core habits with checkboxes and category pills.
-    - **Habit Growth Card (Light Cream)**: Weekly habit matrix (Mon-Sun dot grid) and streak counters.
-    - **Long-Term Vision Card (Forest Dark)**: Active goal with milestone progression pins (`Seed`, `Sprout`, `Milestone`).
-    - **Weekly Flow Card (Light Cream)**: Dynamic completion wave chart and circular Harmony gauge.
-  - **`Task` Tab (Tasks Overview & Velocity)**: Dedicated multi-horizon task tracking:
-    - **This Week's Flow**: Monday to Sunday rhythm window with weekly velocity %, completed vs remaining/left counts, 7-segment weekday distribution bar, and weekly task list.
-    - **Monthly Horizon**: Interactive month switcher (e.g. `September 2026`, `August 2026`), monthly achievement rate, progress bar, category distribution pills (`Craft`, `Body`, `Mind`, `Study`, `Career`), and monthly task details.
-    - **Quick Action**: Direct link to open the full task queue (`/tasks`).
-- **Periodic Rhythm Retrospective Dialogs (`PeriodicReviewModal.tsx`)**:
-  - **Automated Lifecycle Trigger**:
-    - **Weekly Retrospective**: Automatically pops up on Monday (or the first time the user opens the application in a new calendar week) reviewing the preceding Monday–Sunday cycle. Persists reviewed week key (`rooted_last_reviewed_week`) in `localStorage` so it triggers once per week.
-    - **Monthly Retrospective**: Automatically triggers at the start of each new month (1st–5th of the month or first time opened in that month) reviewing the preceding calendar month. Persists `rooted_last_reviewed_month` in `localStorage`.
-  - **Comprehensive Analyzation Dialog Features**:
-    - **Dual Horizon Switcher**: Seamless tab toggle between `🌿 Past Week` and `🌙 Past Month`.
-    - **Task Velocity Metric**: Percentage fulfilled with dynamic gradient progress bar (`X of Y intentions completed`).
-    - **Due Date & Completion Audit**: Explicit count of Completed vs Deferred/Overdue vs Total Scheduled intentions.
-    - **Pillar Balance Radar**: Dynamic badges displaying intention distribution across the 6 pillars (`Craft`, `Mind`, `Body`, `Spirit`, `Study`, `Career`).
-    - **Habit Rhythm Consistency**: Rolling weekly/monthly habit completion rate and total ritual sessions logged.
-    - **Inspect Detailed Intentions Drawer**: Expandable accordion listing every task from that period with status checkmark, category badge, and due date.
-    - **Mindful Seasonal Quote & Encouragement**: Grounding botanical reflection tailored to support ongoing consistency.
-    - **Testing Reset**: Includes a "Reset Triggers (Test Auto-Popup)" control allowing instant clearing of localStorage flags for development testing.
-  - **Manual Access**: Accessible on demand from the dashboard header row via the dedicated **`[ ✨ Rhythm Review ]`** capsule button.
+### 1. Dashboard (`/` or Today Sanctuary)
+The unified single-screen "Today" sanctuary matching **`design_concept_7_homepage_redesign.jpg`**:
+- **Editorial Header & Floating Metric Capsules**:
+  - Greeting: "Good morning, Alex · September 21, 2026" (or dynamic time-of-day greeting with formatted calendar date).
+  - Grounding mantra: "Grounded intentions for a conscious, steady flow."
+  - Floating metric capsules:
+    - Harmony % (e.g. `91% Harmony`).
+    - Days Rooted streak (e.g. `24 Days Rooted 🔥`).
+    - Sleep Rest duration (e.g. `7.8h Rest`).
+    - Daily Intentions completed/total (e.g. `5 of 7 Intentions`).
+- **Canonical 2x2 Sanctuary Grid**:
+  1. **Daily Intentions Card (Top-Left, Forest Green `#1E3127`)**:
+     - Strictly displays tasks where `dueDate === today`.
+     - Header shows active count badge (`X of Y`) and subtitle "Strictly today's conscious focus".
+     - Task items with one-click checkmark toggle, category pill badges, and due time tags.
+     - "+" modal defaulting `dueDate` to today.
+  2. **Today's Rituals Card (Top-Right, Off-White `#FFFFFF`)**:
+     - Actionable checklist of today's recurring habits with one-click toggle commit (`toggleHabitLog`).
+     - Category pill badges (`Mind`, `Body`, `Craft`, `Spirit`, etc.).
+     - Flame streak count (`🔥 N`).
+     - Real-time progress bar and percentage of habits completed today.
+  3. **Long-Term Vision Card (Bottom-Left, Forest Green `#1E3127`)**:
+     - Active long-term goals with carousel navigation (`< Goal 1 of 3 >`).
+     - Dynamic progress bar and achievement percentage.
+     - Botanical milestone progress track: dynamic node pins with botanical icons (`Seed 🌱`, `Sprout 🌿`, `Milestone 🌸`) and interactive toggle directly on the track.
+     - "Explore Roadmap →" link to full milestones manager (`/milestones`).
+  4. **Rest Sanctuary Clock Card (Bottom-Right, Off-White `#FFFFFF`)**:
+     - 24-hour radial SVG clock dial with glow gradient arc connecting bedtime to wake-time along the perimeter.
+     - Left panel: duration (`7.8 hrs`), target comparison chip (`+0.3h surplus` or deficit), quality badge (`Restful & Deep`), and bedtime/wake-time capsule chips.
+     - Quick "Adjust / Log Rest" button triggering the `MorningSleepDialog`.
+- **Automated Lifecycle Dialogs**:
+  - **Morning Sleep Check-in**: Evaluates on load; if no sleep log exists for today and user hasn't dismissed it, prompts check-in pre-filled with yesterday's times.
+  - **Periodic Rhythm Review Modal**: Automatic weekly (Mondays) and monthly (1st–5th) retrospective audits.
 
 ---
 
@@ -88,10 +92,11 @@ A comprehensive to-do manager for organizing all actionable responsibilities:
   - Located directly on the action strip of every **Pending (uncompleted)** task card (`CalendarPlus` icon).
   - Automatically hidden once a task is marked completed to preserve visual cleanliness.
   - In a single click, calculates tomorrow's calendar date (`+1 day`), updates the task's due date optimistically, and moves it to tomorrow in SQLite via `rescheduleTask`.
-- **"Reschedule All Overdue to Today" (1-Click Morning Reset Banner)**:
-  - Automatically appears at the top of the task list whenever there are pending overdue intentions from previous days (`dueDate < today`).
-  - Displays: *"Morning Reset: X intentions left from previous days"*.
-  - A single tap on **"Reschedule All to Today"** updates all past-due tasks to today's date both optimistically and in SQLite via `rescheduleAllOverdueTasks`, clearing overdue cognitive backlog instantly.
+- **"Reschedule Yesterday's Intentions to Today" (1-Click Morning Reset Banner)**:
+  - Automatically appears at the top of the task list whenever there are pending intentions specifically from yesterday (`dueDate === yesterday`). Older backlog intentions remain organized in the historical Overdue/All tabs without cluttering the morning ritual.
+  - Displays: *"Morning Reset: X intentions left from yesterday"*.
+  - Subtitle: *"Bring unfinished intentions directly into today's focus with one click."*
+  - A single tap on **"Reschedule to Today"** moves only yesterday's pending tasks to today's date both optimistically and in SQLite/Turso via `rescheduleYesterdayTasks`, providing an uncluttered, grounded morning start.
   - Includes a **1-Day Persistent Dismissal** button (`X`): dismisses the banner for the entire calendar day (persisted in browser `localStorage`), ensuring it will not reappear upon page reload or navigation until the next morning.
 - **Mindful "Rooted" Polish & Motivation**:
   - **Tranquil Completion Ripple**: Toggling an intention to completed fires an active, organic multi-sensory ripple: concentric expanding wave rings pulse from the checkmark button, a radial botanical glow sweeps across the card, the card lifts with a soft sage aura (`bg-[#EBF5EE] ring-2 ring-[#7C9A86]/50 shadow-[0_4px_24px_rgba(124,154,134,0.35)] scale-[1.015]`), and a playful `"🌿 Grounded!"` badge bounces in beside the title before settling into a peaceful completed state.
@@ -162,29 +167,77 @@ Dedicated mindful habit growth and consistency tracking:
 
 ---
 
-### 4. Seasons (`/seasons` - Calendar & Daily History)
-Historical time-travel interface:
-- Interactive monthly calendar with daily intensity dots.
-- Date drill-down: Clicking any previous date opens the day's record showing:
-  - Exact habits completed and missed.
-  - Exact tasks completed on that date.
-  - Day's consistency score.
+### 4. Seasons (`/seasons` - Calendar & Panoramic Observatory)
+Historical time-travel interface with 3 specialized lenses and unified daily drill-down:
+- **3-Way Panoramic Lens Switcher**:
+  - **`Habits` Lens**:
+    - Habit constellation selector (click any habit to view its monthly calendar matrix).
+    - Monthly ritual calendar with ticks (✓) for completed, crosses (✗) for missed, and upcoming placeholders.
+    - Adherence percentage, honored count, and missed count capsules.
+  - **`Tasks` Lens**:
+    - Monthly execution velocity score, high/urgent priority achievement tally, and pending tasks count.
+    - Search query bar, status filters (`All`, `Completed`, `Pending`), and category pills.
+    - Accomplishments grouped by weekly intervals (`Week 1`, `Week 2`, `Week 3`, `Week 4 & Beyond`).
+  - **`Sleep` Lens**:
+    - Monthly sleep scoreboard: Average rest hours per night, cumulative rhythm balance (surplus/debt), restful nights count, and check-in adherence.
+    - Monthly Sleep Matrix calendar: each day displays duration, bedtime $\rightarrow$ wake-time arc, quality tag, and color-coded background (sage for target met, sand for mild deficit, terracotta for deep deficit).
+    - Quick "Log Today's Rest" trigger.
+- **Unified 3-in-1 Daily Inspector Modal**:
+  - Clicking **any calendar day** across all 3 lenses opens a comprehensive daily audit modal:
+    1. 💤 **Rest Sanctuary**: Sleep duration, bedtime, wake-time, rest quality badge, reflection notes, and 1-click edit/log trigger.
+    2. 🌿 **Habit Rituals**: Complete checklist of habits with direct interactive checkmark toggles for that date.
+    3. 📋 **Daily Intentions**: Tasks scheduled for that day with category badges, priority, due time, and 1-click status completion toggle.
 
 ---
 
-### 5. Milestones (`/milestones` - Long-Term Goals)
+### 5. Milestones (`/milestones` - Long-Term Goals & Roadmaps)
 Goal roadmapping and progressive milestone tracking:
-- Categorized long-term goals (e.g., Career, Health, Creativity, Financial).
-- Milestone checklists for each goal.
-- Direct association with daily habits and tasks.
-- Overall goal completion % derived from milestone achievements.
+- **`+ Add Life Goal` System**:
+  - Modal to create custom life roadmaps with Title, Category (`Study`, `Career`, `Craft`, `Body`, `Mind`, `Spirit`), Target Completion Date (Month/Year), and Vision Description.
+  - Multi-step initial milestone builder (customizable titles and stages).
+- **Botanical Milestone Stages**:
+  - 🌱 **Seed**: Initial research, scoping, and foundational setup.
+  - 🌿 **Sprout**: Active development, core chapters, and execution sprints.
+  - 🌳 **Milestone**: Major deliverable or final accomplishment.
+- **In-Card Milestone Management**:
+  - Dedicated **`+ Add Milestone`** button inside every roadmap card to append new steps at any point.
+  - Checkbox toggle with live progress calculation.
+  - Individual milestone deletion (`X` icon on hover).
+- **Life Roadmap Controls**:
+  - **Primary Dashboard Vision**: 1-click **Set as Dashboard Focus** to determine which life goal is highlighted on the Home Dashboard's `LongTermVisionCard`.
+  - Roadmap deletion (`Trash2`) with cascading milestone safety.
+- **Relational Alignment**: Direct association with daily habits and tasks linked to that goal.
 
 ---
 
-### 6. Growth (`/growth` - Analytics & Patterns)
-Productivity insights and pattern discovery:
-- Rolling consistency metrics (7-day, 30-day, monthly).
-- Behavioral insights engine:
-  - Identifies top-performing habits.
-  - Detects days with drop-offs (e.g. "You tend to miss Exercise on Saturdays").
-  - Compares this month's consistency against last month's.
+### 6. Growth (`/growth` - Growth & Life Patterns)
+A dynamic, data-driven personal analytics engine matching **`design_concept_8_growth_analytics.jpg`**:
+- **Dynamic Time Horizon Selector**:
+  - `This Week`: Rolling 7 days (`today - 6 days` to `today`).
+  - `Current Month` (e.g. `September 2026`): 1st of current month to today.
+  - `Previous Month` (e.g. `August 2026`): Full previous calendar month.
+  - `All Time`: Rolling 90 days.
+  - Dynamically recalculates all metrics, completion rates, streaks, and charts upon tab selection.
+- **Row 1: The Triad Scorecard (3 Clean Summary Cards)**:
+  1. **Task Execution**:
+     - Completed vs total count (e.g., `42 / 48 Completed`) with prominent completion percentage (e.g., `88%`).
+     - Mini segmented progress bar: Sage Green (`#7C9A86`) for done on time, Terracotta (`#D98A6C`) for missed/overdue, and Warm Sand (`#D4A373`) for pending.
+     - Legend indicator pills.
+  2. **Habit Consistency**:
+     - Overall adherence percentage (e.g., `84% Consistency`) and total check-in count.
+     - Longest active consistency streak badge with flame icon (`🔥 24-Day Best Streak`).
+  3. **Sleep Sanctuary**:
+     - Nightly average sleep duration (e.g., `7h 35m Avg`) displayed alongside `8.0h Target` with vertical divider.
+     - Quality pill tag highlighting the percentage of restful/balanced nights (`85% Restful`).
+- **Row 2: Deep Comparative Analysis**:
+  1. **Task Velocity & Missed Analysis**:
+     - Full-width segmented distribution bar of completed, missed/overdue, and pending intentions.
+     - Large bold priority execution callout (e.g. `95%` on urgent tasks).
+     - Breakdown table for `Urgent`, `High`, and `Normal` priority tiers.
+  2. **Habit Anchors & Friction Points**:
+     - **Top Anchor Habits (Strengths)**: Habits with $\ge 75\%$ adherence, showing title, completion percentage, and active streak counter (`🔥 N`).
+     - **Needs Attention (Friction Points)**: Habits with $< 75\%$ adherence with automated pattern detection (e.g., *"Missed 5/8 weekend days"* or *"Missed primarily on Thursdays"*).
+- **Row 3: Day-of-Week Rhythm & Rest Correlation (Deep Forest Green Banner)**:
+  - Deep forest green (`#1E3127`) full-width banner.
+  - **Day-of-Week Rhythm**: 7 vertical rounded bars (`Mon, Tue, Wed, Thu, Fri, Sat, Sun`) with heights proportional to daily execution consistency, visually highlighting weekday strengths vs weekend drops.
+  - **Rest & Productivity Link**: Translucent pill container (`#24372D`) with info icon showing computed correlation between 8h+ sleep and daytime task completion rate (e.g., *"Rest Correlation: 26% higher task completion following 8h+ sleep"*).

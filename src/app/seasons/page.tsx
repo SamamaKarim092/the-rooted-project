@@ -1,24 +1,18 @@
-import { prisma } from "@/lib/prisma";
-import { getTodayString } from "@/lib/utils";
+import { getSeasonsData } from "@/lib/actions";
 import { SeasonsClient } from "./SeasonsClient";
 
 export const revalidate = 0;
 
 export default async function SeasonsPage() {
-  const today = getTodayString();
+  const data = await getSeasonsData();
 
-  const tasks = await prisma.task.findMany({
-    orderBy: [{ dueDate: "desc" }, { dueTime: "asc" }],
-  });
-
-  const habits = await prisma.habit.findMany({
-    include: {
-      logs: {
-        orderBy: { date: "desc" },
-      },
-    },
-    orderBy: { createdAt: "asc" },
-  });
-
-  return <SeasonsClient tasks={tasks} habits={habits} today={today} />;
+  return (
+    <SeasonsClient
+      tasks={data.tasks}
+      habits={data.habits}
+      sleepLogs={data.sleepLogs}
+      sleepSetting={data.sleepSetting}
+      today={data.today}
+    />
+  );
 }

@@ -72,6 +72,11 @@ A customizable target (defaulting to **8.0 hours / 480 minutes**) establishes th
   * If no sleep log exists for today (`!data.sleep.todayLog`) and the user has not dismissed it today (`localStorage.getItem("rooted_sleep_dismissed_date") !== today`), the dialog opens automatically.
 * **Interactive Minimal Time Controls**:
   * **Defaulted from Yesterday**: On fresh check-ins, the dialog automatically defaults to yesterday's recorded bedtime and wake time (with a 1-tap "Yesterday: ..." badge to restore if edited).
+  * **Clickable In-Place Sleep Target**:
+    * No separate section or visual clutter: the target hours label (`Target: 8.0h ✎`) inside the calculation hero card is directly clickable.
+    * Clicking toggles an in-place mini stepper (`[−] [8.0]h [+] [✓]`) allowing the user to type or step their target duration right there.
+    * Immediately updates calculation bar, target marker line, and percentage in real-time.
+    * Persists atomically to `SleepSetting` in Turso/SQLite via `updateSleepTarget` server action, auto-revalidating `/`, `/seasons`, and `/growth`.
   * **Left-Aligned Time & Right-Hand Stepper**:
     * Time value displayed in large editorial serif font (`font-serif text-2xl md:text-3xl font-bold text-[#1A241E]`), **left-aligned** within the input box.
     * **Right-hand side Up (▲) and Down (▼) arrow buttons** cleanly integrated within the container for quick $\pm 15$ minute adjustments.
@@ -83,18 +88,33 @@ A customizable target (defaulting to **8.0 hours / 480 minutes**) establishes th
   * Single-tap "Save Rest Record" with optimistic UI updates.
   * "Remind Me Later" dismissal that preserves peaceful focus for the day.
 
-### 2. Sleep Sanctuary Tab (`DashboardMainView.tsx` & `SleepRhythmOverview.tsx`)
-A dedicated **`[Sleep]`** tab on the main dashboard provides a 3-horizon rest cockpit:
-* **Today's Rest Card**:
-  * Real-time duration ratio, target fulfillment percentage, bedtime, wake time, rest quality pill, and reflection note.
-* **Target Sleep Customizer**:
-  * Interactive `- 0.5h` and `+ 0.5h` adjustment controls (ranging between 5.0h and 12.0h) that persist atomically to SQLite via `updateSleepTarget`.
-* **Weekly 7-Day Rhythm Wave (Monday – Sunday)**:
-  * Vertical day bars with a horizontal dashed target guide line at 8h.
-  * Color-coded bars: Sage for target reached, Terracotta for sleep debt, Sand for overslept.
-  * Weekly velocity score, nightly average, and net sleep balance (+surplus or -debt).
-  * Direct clicking on any day bar opens the editor for that specific date.
-* **Monthly Horizon & History Archive**:
-  * Multi-month selector (September 2026, August 2026).
-  * Monthly scoreboard: Average rest per night, Target Adherence %, Total Restorative Hours, and Nights Logged.
-  * Complete scrollable log of all nights with one-click pencil edit buttons.
+### 2. Dashboard Rest Sanctuary Radial Clock (`SleepClockCard.tsx`)
+Positioned on the main dashboard in the bottom-right quadrant of the canonical 2x2 grid:
+* **24-Hour Radial SVG Clock Dial**:
+  * Visualizes the bedtime-to-wake-time duration as a glowing sweep arc along a 24-hour circular perimeter.
+  * Clock center displays duration (`7.8h`) and status ("Logged" or "Preview").
+  * Perimeter hour markers: `12a`, `3a`, `6a`, `9a`, `12p`, `3p`, `6p`, `9p`.
+  * Distinct endpoint glowing pins for Bedtime (`Moon` / `#D98A6C`) and Wake time (`Sun` / `#7C9A86`).
+* **Left-Hand Metrics Panel**:
+  * Duration metric in large editorial serif font (`7.8 hrs`).
+  * Target comparison chip (`+0.3h surplus` in sage green, or `-0.8h deficit` in terracotta).
+  * Rest quality badge (`Restful & Deep`, `Balanced Rest`, `Restless Night`, `Heavy / Groggy`).
+  * Bedtime and wake-time capsule chips.
+  * Quick "Adjust / Log Rest" button that immediately opens `MorningSleepDialog`.
+
+### 3. Seasons Sleep Sanctuary Lens (`src/app/seasons/SeasonsClient.tsx`)
+Accessible via the 3-Way Lens Switcher (`[ Habits ] [ Tasks ] [ Sleep ]`):
+* **Monthly Rest Scoreboard**:
+  * Average rest per night (`7.6h avg`).
+  * Cumulative rhythm balance (+surplus or -debt vs target).
+  * Restful nights count (e.g. `18 / 24 logged`).
+  * Check-in adherence rate across the calendar month.
+* **Monthly Sleep Matrix Calendar**:
+  * 7 columns (Monday – Sunday) mapping all dates of the month.
+  * Cells display duration, bedtime $\rightarrow$ wake-time arc, and quality badge.
+  * Color-coded background based on sleep vs target:
+    * Sage green (`bg-[#F4F8F5] border-[#D3E3D7]`): Target met ($\ge$ target - 0.5h).
+    * Warm sand (`bg-[#FAF7F0] border-[#D4A373]/40`): Mild deficit (target - 1.5h to target - 0.5h).
+    * Soft terracotta (`bg-[#FDF6F3] border-[#F0D5CA]`): Deep deficit (< target - 1.5h).
+* **Unified 3-in-1 Daily Inspector**:
+  * Clicking any calendar date across the app opens a unified modal inspecting Rest, Habits, and Tasks for that day with one-click toggles and sleep edit triggers.

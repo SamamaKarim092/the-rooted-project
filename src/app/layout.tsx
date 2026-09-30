@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Plus_Jakarta_Sans } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import { Sidebar } from "@/components/layout/Sidebar";
+import { AppShell } from "@/components/layout/AppShell";
 
 const fraunces = Fraunces({
   variable: "--font-fraunces",
@@ -17,8 +18,13 @@ const plusJakarta = Plus_Jakarta_Sans({
   weight: ["400", "500", "600", "700"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export const metadata: Metadata = {
-  title: "Rooted — Mindful Productivity & Habit Growth",
+  title: "The Rooted Project — Mindful Productivity & Habit Growth",
   description: "A unified system linking daily intentions, habit streaks, calendar history, and long-term milestones.",
 };
 
@@ -28,13 +34,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${fraunces.variable} ${plusJakarta.variable}`}>
-      <body className="min-h-screen bg-[#F7F4EB] text-[#1A241E] flex antialiased selection:bg-[#7C9A86]/20 selection:text-[#1E3127]">
-        <Sidebar />
-        <main className="flex-1 min-w-0 px-6 py-8 md:px-12 md:py-10 max-w-7xl overflow-y-auto">
-          {children}
-        </main>
-      </body>
-    </html>
+    <ClerkProvider
+      appearance={{
+        variables: {
+          colorPrimary: "#1E3127",
+          colorBackground: "#FAF7F0",
+          colorForeground: "#1A241E",
+          colorMutedForeground: "#586B60",
+          borderRadius: "1rem",
+        },
+      }}
+    >
+      <html lang="en" className={`${fraunces.variable} ${plusJakarta.variable}`}>
+        <body className="min-h-screen bg-[#F7F4EB] text-[#1A241E] antialiased selection:bg-[#7C9A86]/20 selection:text-[#1E3127]">
+          <AppShell>{children}</AppShell>
+        </body>
+      </html>
+    </ClerkProvider>
   );
 }
+

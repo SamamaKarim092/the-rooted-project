@@ -490,7 +490,7 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
   const weekDayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 w-full">
       {/* 1. Header with Editorial Title & Today Habit Dial */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         <div>
@@ -1188,10 +1188,12 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
                       {habit.category}
                     </span>
 
-                    <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F5E8DC] text-[#93593B] text-xs font-semibold">
-                      <Flame className="w-3.5 h-3.5 text-[#D98A6C] fill-[#D98A6C]" />
-                      <span>{currentStreak}d Streak</span>
-                    </div>
+                    {currentStreak >= 2 && (
+                      <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#F5E8DC] text-[#93593B] text-xs font-semibold">
+                        <Flame className="w-3.5 h-3.5 text-[#D98A6C] fill-[#D98A6C]" />
+                        <span>{currentStreak}d Streak</span>
+                      </div>
+                    )}
 
                     {/* Completion Status Badge on Card */}
                     {isTodayDone ? (
@@ -1429,9 +1431,15 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
 
                   {/* Streak */}
                   <div className="col-span-1 text-center">
-                    <span className="px-2 py-0.5 rounded-full bg-[#F5E8DC] text-[#93593B] text-xs font-bold shadow-2xs">
-                      {currentStreak}d
-                    </span>
+                    {currentStreak >= 2 ? (
+                      <span className="px-2 py-0.5 rounded-full bg-[#F5E8DC] text-[#93593B] text-xs font-bold shadow-2xs">
+                        {currentStreak}d
+                      </span>
+                    ) : (
+                      <span className="text-xs text-[#8E9E94] font-medium">
+                        —
+                      </span>
+                    )}
                   </div>
 
                   {/* Action Controls: Graduate + Edit + Delete */}

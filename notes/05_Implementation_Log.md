@@ -436,8 +436,624 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - [x] Mindful Sleep Tracking & Morning Check-in System (Auto-popup, target customizer, weekly & monthly sleep rhythms)
 - [x] Field Notes System (`/notes` with rich cards, markdown/text support, and pin toggles)
 - [x] Seasons Page Overhaul (Habit row selection, monthly tick/cross calendar drilldown, and seasonal task accomplishment log)
+### [Step 16] - Interactive Goal & Milestone Management System
+- Implemented full management capabilities for the **Milestones (`/milestones`)** page:
+  - Added `+ Add Life Goal` button and modal to create custom life roadmaps with title, category (`Study`, `Career`, `Craft`, `Body`, `Mind`, `Spirit`), target completion date, vision description, and a dynamic list of initial milestone steps.
+  - Implemented in-card `+ Add Milestone` button and modal to append new milestone steps to any existing roadmap at any time.
+  - Added botanical stage selector (`Seed 🌱`, `Sprout 🌿`, `Milestone 🌳`) for milestone steps.
+  - Built milestone checkbox toggling with automatic progress recalculation.
+  - Added milestone deletion (`X` button) and life goal deletion (`Trash2` button).
+  - Added 1-click **Set as Dashboard Focus** button to designate the active goal highlighted on the Home Dashboard's `LongTermVisionCard`.
+  - Created server actions in `src/lib/actions.ts`: `createGoal`, `createMilestone`, `deleteMilestone`, `deleteGoal`, `setActiveGoal`.
+- Verified TypeScript compilation (`npx tsc --noEmit`): 0 errors.
+
+### [Step 17] - Clerk Authentication & Multi-Tenancy Engine
+- Upgraded Rooted to a full multi-tenant architecture with **Clerk Authentication**:
+  - Installed `@clerk/nextjs` (`^7.9.4`).
+  - Configured live environment keys (`NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`) and redirect variables in `.env`.
+  - Partitioned database schema (`prisma/schema.prisma`) across all core models: `Task`, `Habit`, `Goal`, `Note`, `SleepLog`, and `SleepSetting` with `userId` and index directives.
+  - Successfully executed `npx prisma db push` preserving all 39 existing tasks, 4 habits, 2 goals, notes, and sleep logs with zero data loss.
+  - Built **Auto-Claim Protocol (`claimDefaultUserData`)** in `src/lib/actions.ts`: Automatically transfers existing local/seed data to the creator's Clerk account upon first login, ensuring seamless onboarding.
+  - Scoped all server actions and queries across all pages (`/`, `/tasks`, `/habits`, `/seasons`, `/milestones`, `/growth`, `/notes`) using `getEffectiveUserId()` with graceful fallback.
+  - Added customized Clerk provider theme in `src/app/layout.tsx` adhering to Rooted's botanical forest green and warm linen aesthetic.
+  - Added dedicated `/sign-in` and `/sign-up` pages (`src/app/sign-in/[[...sign-in]]/page.tsx` & `src/app/sign-up/[[...sign-up]]/page.tsx`).
+  - Integrated `<SignedIn>`, `<SignedOut>`, and `<UserButton />` into `src/components/layout/Sidebar.tsx`.
+  - Added dynamic personalized greeting on the Home Dashboard (`HeaderCapsules`) using Clerk's `currentUser()`.
+  - Created detailed documentation note: `[[09_Authentication_and_Multi_Tenancy]]`.
+- Verified TypeScript compilation (`npx tsc --noEmit`): 0 errors.
+
+### [Step 18] - Turso LibSQL Cloud Database Integration & Data Replication
+- Connected Rooted to **Turso (LibSQL Cloud Database)**:
+  - Installed `@libsql/client` and `@prisma/adapter-libsql`.
+  - Configured `src/lib/prisma.ts` with a dual-engine architecture:
+    - Automatically instantiates `PrismaLibSQL` adapter when `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` are present in `.env`.
+    - Automatically falls back to local SQLite if credentials are unset.
+  - Initialized full schema tables and indexes in Turso (`Goal`, `Milestone`, `Habit`, `HabitLog`, `Task`, `SleepLog`, `SleepSetting`, `Note`).
+  - Successfully replicated all 42 tasks, 4 habits, 36 habit logs, 2 goals, 3 milestones, notes, and sleep logs directly into Turso cloud.
+  - Built `AppShell` full-screen standalone layout for `/sign-in` and `/sign-up` omitting the sidebar.
+  - Verified compilation (`npx tsc --noEmit`): 0 errors.
+  - Successfully tested and running live on `http://localhost:3000`.
+
+---
+
+## 📌 Current Status & Next Actions
+
+- [x] Initial specification review
+- [x] Technology stack approval (Next.js 16 App Router, Tailwind CSS v4, SQLite Prisma)
+- [x] Next.js foundation scaffolding & directory structure
+- [x] Agent directive (`AGENTS.md`)
+- [x] Obsidian notes architecture (`notes/`)
+- [x] Prisma SQLite schema and seed script (August + September data)
+- [x] Rooted layout (Sidebar, Header capsules, theme tokens)
+- [x] Dashboard page faithful to `design_concept_6.jpg`
+- [x] Tasks (`/tasks`), Habits (`/habits`), Seasons (`/seasons`), Milestones (`/milestones`), Growth (`/growth`)
+- [x] Monthly tracking, task archives, and month-over-month retrospectives
+- [x] Prominent date section headings and relative date grouping on Tasks page
+- [x] Expanded 6-pillar category system (`Mind`, `Body`, `Craft`, `Spirit`, `Study`, `Career`)
+- [x] Dedicated Today Clock Dial counter in `/tasks` header
+- [x] Dual-tab switcher on Main page (`[Journal]` & `[Task]`) with weekly & monthly velocity overview
+- [x] Tasks page drag-to-shuffle handle, removal of time badges, clean category naming
+- [x] Database purge of dummy tasks and habits for fresh user onboarding
+- [x] Habits page redesign: TodayHabitDial, Card vs Weekly Matrix dual views, dynamic scoreboard, starter rituals
+- [x] Habits completion indicators, weekly/lifetime tracking strip, status filter, and Edit Habit modal
+- [x] Task editing, deletion, and drag-and-drop shuffle engine overhaul (clean 3-line handle)
+- [x] Task Filter & Ordering engine (Last entered top/bottom, Priority, Due Date, Goal alignment)
+- [x] Task speed of capture (Inline Quick-Add), 1-Click Postpone, Morning Reset, and Mindful Polish
+- [x] Habit Graduation & Mastered Rituals Archive (Learning sprints, lifetime stats, reflection notes, plant next habit)
+- [x] Anytime Intentions (Dedicated ANYTIME tab, undated tasks, 1-click Do Today promotion, inline capture)
+- [x] Periodic Rhythm Retrospective Dialogs (Automated Weekly on Monday/first open & Monthly on 1st/new month open)
+- [x] Mindful Sleep Tracking & Morning Check-in System (Auto-popup, target customizer, weekly & monthly sleep rhythms)
+- [x] Field Notes System (`/notes` with rich cards, markdown/text support, and pin toggles)
+- [x] Seasons Page Overhaul (Habit row selection, monthly tick/cross calendar drilldown, and seasonal task accomplishment log)
 - [x] Morning Sleep Check-in Minimal Up/Down Steppers & Yesterday Default
+- [x] Interactive Goal & Milestone Management System (`+ Add Life Goal`, in-card `+ Add Milestone`, deletion, active vision toggle)
+- [x] Multi-Tenant Clerk Authentication & Zero-Data-Loss Migration System
+- [x] Standalone Full-Screen Auth Pages (`AppShell`)
+- [x] Turso LibSQL Cloud Database Integration & Data Replication
+- [x] Turso Schema Parity Audit & Terminal Error Resolution (Added missing `HabitLog.note`, `Habit.frequencyType`, `Task.scheduledTime`, configured middleware 307 redirect)
+- [x] Habit & Milestone Timestamp Synchronization (`updatedAt` constraint fix & Prisma Client regeneration)
+- [x] Morning Reset Scope Refinement (Strictly yesterday's unfinished tasks only)
+- [ ] Vercel One-Click Production Deployment
 - [ ] User review and feedback
+
+---
+
+### Step 18: Turso Schema Parity Audit & Terminal Error Resolution
+- **Root Cause Identified**:
+  - Terminal was logging: `ConnectorError: SQLite input error: no such column: main.HabitLog.note` whenever habit queries with logs ran.
+  - In addition, earlier missing columns `Habit.frequencyType` and `Task.scheduledTime` caused query failures.
+  - Unauthenticated visits to `/` were throwing 404 rather than redirecting to `/sign-in`.
+- **Changes Applied**:
+  - Ran a schema parity check across all tables against `prisma/schema.prisma`.
+  - Added missing column `note` to `HabitLog`.
+  - Added missing column `frequencyType` to `Habit`.
+  - Added missing column `scheduledTime` to `Task`.
+  - Updated `src/middleware.ts` to pass `unauthenticatedUrl` to `auth.protect()`, smoothly redirecting guests to `/sign-in`.
+- **Validation**:
+  - Ran automated query tests across all models (`Goal`, `Milestone`, `Habit`, `HabitLog`, `Task`, `SleepLog`, `SleepSetting`, `Note`). All succeeded.
+  - Ran production `npm run build`: compiled cleanly with zero errors.
+
+---
+
+### Step 19: Habit & Milestone Timestamp Synchronization
+- **Root Cause Identified**:
+  - `Habit` and `Milestone` tables in Turso had `updatedAt DATETIME NOT NULL`, but `updatedAt` was omitted from `prisma/schema.prisma`.
+  - Creating a habit (`prisma.habit.create`) resulted in `SQLITE_CONSTRAINT: NOT NULL constraint failed: Habit.updatedAt`.
+  - When running `npx prisma generate`, a lingering `npm run dev` process held a file lock on `query_engine-windows.dll.node`, throwing `EPERM`.
+- **Changes Applied**:
+  - Added `updatedAt DateTime @updatedAt` to `model Habit` in `prisma/schema.prisma`.
+  - Added `createdAt DateTime @default(now())` and `updatedAt DateTime @updatedAt` to `model Milestone` in `prisma/schema.prisma`.
+  - Released process lock, generated fresh Prisma Client with `npx prisma generate`.
+  - Verified creation and deletion of `Habit` and `Milestone` on Turso with live timestamps.
+  - Full production build (`npm run build`) succeeded with 0 errors.
+
+---
+
+### Step 21: Homepage Redesign (Concept 7) & Seasons Sleep Integration
+- **Objective**:
+  - Implement the approved redesign in `design/design_concept_7_homepage_redesign.jpg`:
+    - Remove top tab switcher (`[Journal] [Task] [Sleep]`) and manual review header buttons from dashboard.
+    - Remove obsolete cards `HabitGrowthMatrix.tsx` and `WeeklyFlowCard.tsx`.
+    - Establish a balanced 2x2 grid:
+      1. `DailyIntentionsCard`: Strictly displays tasks where `dueDate === today`.
+      2. `TodayRitualsCard`: Actionable checklist of today's habits with one-click toggling, category pills, and flame streaks.
+      3. `LongTermVisionCard`: Botanical milestone track with active goal carousel navigation (`< Goal 1 of 3 >`).
+      4. `SleepClockCard`: 24-hour radial SVG clock dial with bedtime $\rightarrow$ wake-time glowing sweep arc, metrics, and rest logging trigger.
+    - Add calendar date beside greeting in header capsules (`Good morning, Alex · September 21, 2026`) and rest hours capsule.
+  - Overhaul Seasons page (`src/app/seasons/SeasonsClient.tsx`):
+    - Add 3-Way Lens Switcher (`[ Habits ] [ Tasks ] [ Sleep ]`).
+    - Implement Monthly Sleep Matrix calendar with color-coded target adherence and monthly sleep metrics.
+    - Implement the **Unified 3-in-1 Daily Inspector** modal allowing users to inspect Rest, Habits, and Tasks for any clicked day.
+- **Changes Applied**:
+  - `src/lib/actions.ts`:
+    - Scoped `todayTasks = tasks.filter((t) => t.dueDate === today)`.
+    - Added `activeGoals = await prisma.goal.findMany(...)` returning `activeGoals` alongside `activeGoal`.
+    - Enriched habits with `isCompletedToday` and `currentStreak`.
+    - Added `getSeasonsData()` returning `{ tasks, habits, sleepLogs, sleepSetting, today }`.
+  - `src/app/seasons/page.tsx`: Updated to invoke `getSeasonsData()` and pass `sleepLogs` and `sleepSetting` to `<SeasonsClient />`.
+  - `src/components/dashboard/TodayRitualsCard.tsx`: Created with optimistic toggle, flame streak counters, category pills, and real-time completion bar.
+  - `src/components/dashboard/SleepClockCard.tsx`: Created with 24-hour radial SVG clock dial, bedtime $\rightarrow$ wake sweep arc, target comparison, quality badge, and quick log button.
+  - `src/components/dashboard/DailyIntentionsCard.tsx`: Enhanced header with today focus count badge, due time display, and modal defaulting `dueDate: today`.
+  - `src/components/dashboard/LongTermVisionCard.tsx`: Added carousel cycling (`< Goal 1 of 3 >`) and dynamic botanical milestone track.
+  - `src/components/dashboard/DashboardMainView.tsx`: Refactored to 2x2 grid containing the four canonical cards, removing obsolete tab switcher and cards.
+  - `src/components/layout/HeaderCapsules.tsx`: Added calendar date and rest duration capsule.
+  - Deleted obsolete files: `HabitGrowthMatrix.tsx` and `WeeklyFlowCard.tsx`.
+  - `src/app/seasons/SeasonsClient.tsx`: Added 3-Way Lens Switcher, Sleep Lens with monthly sleep matrix & metrics, and the Unified 3-in-1 Daily Inspector modal.
+- **Validation**:
+  - Production build (`npm run build`) completed with 0 errors across all routes.
+
+---
+
+### Step 22: In-Place Clickable Sleep Target in Morning Sleep Dialog
+- **Objective**:
+  - Allow users to set their daily sleep target directly inside `MorningSleepDialog.tsx` without adding an extra visual card or complicated section.
+  - Make the target label (`Target: 8.0h`) in the Hero Calculation Card directly clickable.
+  - Toggling inline edit switches to a sleek in-place mini stepper (`[−] [8.0]h [+] [✓]`), with 8.0h as the standard default.
+  - Changes recalculate sleep fulfillment %, target marker lines, and surplus/deficit metrics in real-time.
+  - Atomically persists to `SleepSetting` in Turso/SQLite via `updateSleepTarget` server action, auto-revalidating `/`, `/seasons`, and `/growth`.
+- **Validation**:
+  - Production build (`npm run build`) completed with 0 errors across all routes.
+
+---
+
+### Step 23: Dashboard Header Text Alignment & Single-Row Capsule Layout
+- **Objective**:
+  - Restructure the top header of the Rooted Dashboard into a clean 3-line editorial hierarchy:
+    1. **Line 1**: Personalized greeting (`Good morning, Samama` — using user name with fallback to `"Samama"`).
+    2. **Line 2**: Formatted calendar date (`September 21, 2026`).
+    3. **Line 3**: Botanical grounding mantra (`Grounded intentions for a conscious, steady flow.`).
+  - Align all 4 floating metric capsules (`Harmony`, `Rooted Days`, `Rest`, `Daily Intentions`) in a single horizontal row on the same line without breaking or wrapping:
+    - Specifically placed `2 of 4 Intentions` directly beside `7.8h Rest`.
+    - Applied `flex-nowrap`, `whitespace-nowrap`, `shrink-0`, and responsive padding to ensure no capsule wraps to a second row on any viewport.
+- **Files Modified**:
+  - `src/components/layout/HeaderCapsules.tsx`:
+    - Updated layout to 3 discrete stacked lines with dedicated typography hierarchy (`text-3xl font-serif`, `text-lg font-serif text-[#7C9A86]`, and `text-xs font-sans text-[#586B60]`).
+    - Added `whitespace-nowrap` to each capsule and configured the capsule container with `flex-nowrap shrink-0 overflow-x-auto [scrollbar-width:none]`.
+    - Updated responsive breakpoint to `xl:flex-row xl:items-center` for balanced spacing.
+  - `src/app/page.tsx`:
+    - Formatted `data.today` into full date string (`September 21, 2026`).
+    - Defaulted fallback username to `"Samama"`.
+- **Validation**:
+  - Full TypeScript verification (`npx tsc --noEmit`) succeeded with 0 errors.
+
+---
+
+### Step 24: Full Responsive Layout, Settings Page & Logout Button
+- **Objective**:
+  - Fix the zoom-out / horizontal overflow issue that occurs across all pages when the browser viewport is resized (scrolling causes the page to scale down instead of reflowing).
+  - Create a new **Settings** page at `/settings`.
+  - Add a **Settings** nav link in the sidebar above the "My Sanctuary" user profile card.
+  - Add a **Logout / Sign Out** button in the sidebar below the "Mindful Rhythm" botanical quote.
+- **Root Cause Analysis**:
+  - The sidebar was hardcoded at `w-64` (256px) and always visible, even on small screens. The main content area had no `overflow-x-hidden`, allowing content to expand horizontally beyond the viewport, triggering browser zoom-out behavior.
+  - No viewport meta tag was present to constrain `initial-scale` and disable user scaling.
+- **Files Modified**:
+  - `src/app/layout.tsx`:
+    - Added a separate `export const viewport: Viewport = { ... }` with `width: "device-width"`, `initialScale: 1`, `maximumScale: 1`, `userScalable: false`.
+    - Used the correct Next.js 14+ `Viewport` type (viewport must be a separate export, not nested inside `Metadata`).
+  - `src/app/globals.css`:
+    - Added `html, body { overflow-x: hidden; max-width: 100vw; }` to prevent any horizontal overflow across all pages.
+    - Added `@keyframes slide-in-from-left` and `.animate-slide-in` for the mobile sidebar panel animation.
+  - `src/components/layout/AppShell.tsx`:
+    - Complete rewrite: sidebar is now hidden on mobile (`hidden lg:block`).
+    - Added a sticky mobile top bar with hamburger `<Menu>` icon that opens a full-screen overlay sidebar.
+    - Overlay backdrop with `bg-black/40 backdrop-blur-sm` and slide-in animation.
+    - Main content area uses `overflow-x-hidden overflow-y-auto` to prevent horizontal scrolling.
+    - Responsive padding: `px-4 py-6 sm:px-6 sm:py-8 md:px-10 lg:px-12 md:py-10`.
+  - `src/components/layout/Sidebar.tsx`:
+    - Added `Settings` navigation link (lucide `Settings` icon) positioned above the "My Sanctuary" user profile card.
+    - Added a `Sign Out` button (lucide `LogOut` icon, styled in terracotta `bg-[#F9ECE6]` / `text-[#C87452]`) positioned below the "Mindful Rhythm" botanical inspiration badge.
+    - Both elements are conditionally rendered based on Clerk `isSignedIn` state.
+  - `src/app/settings/page.tsx` **[NEW]**:
+    - Server component fetching user data from Clerk (`currentUser()`) and passing props to `SettingsClient`.
+  - `src/app/settings/SettingsClient.tsx` **[NEW]**:
+    - Full settings page with organized sections: Profile, Sleep & Rest, Notifications, Appearance, Goals & Tracking, Privacy & Data, About.
+    - Each section uses a reusable `SettingsSection` component with forest green icon badges.
+    - Interactive `ToggleSwitch` components for notifications and appearance toggles.
+    - Sign Out button at the bottom using Clerk `signOut`.
+    - Fully styled in the Rooted botanical aesthetic (warm cream, forest green, sage, terracotta).
+- **Validation**:
+  - Full TypeScript verification (`npx tsc --noEmit`) succeeded with 0 errors.
+
+### Step 25: Comprehensive Fluid Responsiveness Overhaul (Across All Pages & Zoom Levels)
+- **Objective**:
+  - Resolve the issue where zooming with mouse scroll (Ctrl+scroll) or viewing on wide screens caused the content to stay pinned to the left edge at a rigid `max-w-7xl` (1280px), leaving a massive empty void on the right.
+  - Eliminate any horizontal overflow triggers (such as `shrink-0` on horizontal flex containers and `max-width: 100vw` with vertical scrollbars) that caused mobile and desktop browsers to zoom out to fit overflowing content.
+- **Root Cause Analysis**:
+  1. `AppShell.tsx` had `max-w-7xl` without `w-full` or `mx-auto`, clamping all pages to 1280px aligned hard-left. On 1080p, 1440p, or when zooming out to 50%/75%, the content became a small box hugging the left with over 50% dead cream space on the right.
+  2. `globals.css` used `max-width: 100vw`, which includes the vertical scrollbar width (typically 16px) on Windows browsers, generating a permanent 16px horizontal overflow.
+  3. `HeaderCapsules.tsx` had a rigid `shrink-0` on the horizontal capsule row, forcing the `<header>` and page wider than 100% on smaller screens.
+  4. `DashboardMainView.tsx` used `lg:grid-cols-2`, which attempted to place 2 cards side-by-side in ~680px of available space between 1024px and 1279px, resulting in card overflow in `SleepClockCard`.
+- **Changes Applied**:
+  - `src/app/globals.css`:
+    - Replaced `max-width: 100vw` with `width: 100%; max-width: 100%; overflow-x: hidden;` on `html` and `body`.
+  - `src/app/layout.tsx`:
+    - Standardized `viewport` to `{ width: "device-width", initialScale: 1 }` to allow smooth native browser reflow.
+  - `src/components/layout/AppShell.tsx`:
+    - Changed main wrapper to `<main className="flex-1 min-w-0 w-full overflow-x-hidden overflow-y-auto">`.
+    - Changed page container to `<div className="w-full max-w-[1600px] mx-auto min-w-0 px-4 py-6 sm:px-6 sm:py-8 md:px-8 lg:px-10 xl:px-12">`.
+    - Stretches 100% across all displays while remaining centered and balanced up to 1600px on ultrawide monitors and zoom-outs.
+  - `src/components/layout/Sidebar.tsx`:
+    - Added `lg:h-screen lg:sticky lg:top-0 lg:overflow-y-auto` so the sidebar stays docked on desktop and scrolls smoothly if vertical height is constrained.
+  - `src/components/layout/HeaderCapsules.tsx`:
+    - Removed `shrink-0` from the capsule container and added `w-full` to `<header>` and `max-w-full min-w-0` to the capsules row.
+  - `src/components/dashboard/DashboardMainView.tsx`:
+    - Upgraded grid from `lg:grid-cols-2` to `grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-7 w-full`. Added `w-full` to all card wrappers.
+  - `src/components/dashboard/SleepClockCard.tsx`:
+    - Changed inner layout from `sm:grid-cols-2` to `md:grid-cols-2` for smooth stacking on narrow card viewports.
+  - `src/app/settings/SettingsClient.tsx`:
+    - Changed container to `w-full max-w-3xl mx-auto space-y-6`.
+  - `src/app/page.tsx`, `src/app/tasks/TasksClient.tsx`, `src/app/habits/HabitsClient.tsx`, `src/app/notes/NotesClient.tsx`, `src/app/seasons/SeasonsClient.tsx`, `src/app/milestones/MilestonesClient.tsx`, `src/app/growth/GrowthClient.tsx`:
+    - Added `w-full` to every page's root container.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors. Dev server hot-reloaded cleanly.
+
+### Step 26: Sidebar Responsive Refinement Across Zoom In & Zoom Out
+- **Objective**:
+  - Fix sidebar behavior during browser zooming (in and out) and viewport resizing so that items do not disconnect, overflow, or disappear unexpectedly.
+- **Root Cause Analysis**:
+  1. Desktop sidebar breakpoint was set to `hidden lg:block` (1024px). When zooming in (e.g. 110%–150%), effective viewport width dropped below 1024px, causing the desktop sidebar to abruptly vanish into a mobile hamburger menu.
+  2. The sidebar used `flex-col justify-between` on an unconstrained container with excessive vertical gaps (`mb-12` = 48px, `space-y-3` = 12px per item). On zoom-out (tall viewport), the bottom section was pushed thousands of pixels down. On zoom-in (short viewport), items collided, and because the parent in `AppShell` lacked `sticky top-0 h-screen`, the sidebar stretched with the document rather than scrolling independently.
+- **Changes Applied**:
+  - `src/components/layout/AppShell.tsx`:
+    - Updated desktop sidebar wrapper to `<div className="hidden md:block shrink-0 sticky top-0 h-screen z-30">`. Lowered collapse breakpoint from `lg` (1024px) to `md` (768px) so the desktop sidebar stays visible during normal desktop zoom-in.
+    - Updated mobile overlay and top bar to `md:hidden`.
+  - `src/components/layout/Sidebar.tsx`:
+    - Changed root aside to `<aside className="w-64 h-full flex flex-col justify-between overflow-y-auto overflow-x-hidden border-r border-[#EAE5D8]/80 bg-[#F7F4EB] px-5 py-6 sm:px-6 sm:py-7 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">`.
+    - Compacted vertical spacing: reduced logo margin to `mb-6 sm:mb-8`, nav item spacing to `space-y-1.5`, and nav padding to `px-3 py-2 text-sm`.
+    - Replaced disconnected bottom spacing with `<div className="pt-4 mt-auto space-y-2.5 border-t border-[#EAE5D8]/80">`. On tall/zoomed-out views, `mt-auto` keeps the account/settings section gracefully anchored with a clean divider; on short/zoomed-in views, it scrolls smoothly without clipping.
+    - Adjusted quote card to `p-3 rounded-2xl` and sign-out button to `px-3.5 py-2` for proportional height conservation.
+- **Validation**:
+  - Full TypeScript check (`npx tsc --noEmit`) succeeded with 0 errors.
+
+### Step 27: Growth & Analytics Page Redesign (`design_concept_8_growth_analytics.jpg`)
+- **Objective**:
+  - Replace the static Growth page with a dynamic, data-driven personal analytics engine (`/growth`) tracking execution across tasks, habits, and sleep recovery.
+- **Implementation Details**:
+  - `src/app/growth/page.tsx`:
+    - Scoped queries to authenticated Clerk user (`getEffectiveUserId()`).
+    - Fetched all user tasks, habits with 120-day historical logs, sleep logs (`prisma.sleepLog`), and user's sleep target hours (`prisma.sleepSetting`, defaulting to 8.0h).
+  - `src/app/growth/GrowthClient.tsx`:
+    - Rebuilt the layout matching `design/design_concept_8_growth_analytics.jpg`:
+      - **Header**: Editorial title `Growth & Life Patterns` + dynamic horizon pill switcher (`This Week`, current month e.g. `September 2026`, previous month e.g. `August 2026`, `All Time`).
+      - **Row 1 (Triad Scorecard)**:
+        - `Task Execution`: Completed/total fraction, percentage badge, 3-color segmented bar (Sage green on-time, terracotta missed, warm sand pending), and legend.
+        - `Habit Consistency`: Overall adherence percentage, total check-ins count, and longest best streak flame badge.
+        - `Sleep Sanctuary`: Nightly average sleep duration, target comparison divider, and restful nights percentage badge.
+      - **Row 2 (Deep Comparative Analysis)**:
+        - `Task Velocity & Missed Analysis`: Full-width segmented distribution bar, large bold urgent priority callout, and breakdown table across Urgent, High, and Normal tiers.
+        - `Habit Anchors & Friction Points`: Top anchor habits ($\ge 75\%$ consistency) with flame streaks; Needs attention friction habits ($< 75\%$) with automated pattern detection (e.g. weekend misses vs weekday misses).
+      - **Row 3 (Day-of-Week Rhythm & Rest Correlation Banner)**:
+        - Forest green container (`#1E3127`).
+        - 7 vertical rounded bars for `Mon` through `Sun` reflecting daily execution rates.
+        - Translucent rest correlation pill (`#24372D`) calculating the task execution lift following 8h+ sleep.
+  - `notes/04_Features_and_Workflows.md`:
+    - Updated Section 6 with complete documentation of the new Growth & Life Patterns engine.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - HTTP `GET /growth` verified with status `200`.
+
+---
+
+### Step 28: Habit Anchors Flame Icon & Active Streak Audit
+- **Root Cause & User Feedback**:
+  - In `src/app/growth/GrowthClient.tsx`, the "Top anchor habits" card displayed a redundant flame icon immediately after the percentage badge (`{h.rate}% 🔥`).
+  - Furthermore, `Database Management System` (DBMS) showed an active streak of `4` with a flame badge (`🔥 4`), even though the user had missed logging DBMS yesterday (Sept 20) and today (Sept 21).
+  - The previous code had hardcoded `Math.max(streak, 4)` and evaluated streak from raw sorted log arrays without checking chronological continuity to today/yesterday.
+- **Changes Applied**:
+  - In `src/app/growth/GrowthClient.tsx`:
+    - Removed the redundant `<Flame />` icon from after `{h.rate}%`.
+    - Implemented calendar-aware active streak calculation:
+      - If completed today, count backwards consecutive days.
+      - If not completed today, check yesterday: if completed yesterday, count backwards consecutive days from yesterday (streak is active while today is ongoing).
+      - If neither today nor yesterday was completed, the active streak is `0` (broken).
+    - Conditioned the right-hand streak display:
+      - When `streak > 0`: renders flame badge with streak count (`🔥 {streak}`).
+      - When `streak === 0`: does not render any flame icon, cleanly displaying `0` in muted neutral text.
+    - Updated `bestStreak` to compute the actual all-time longest streak from historical logs across all habits rather than relying on fallback mock values.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - Verified `GET /growth` returns 200.
+  - DBMS correctly renders with no flame icon and streak `0`. Coding / Paper renders with `🔥 4` and percentage without any trailing flame.
+
+---
+
+### Step 29: Minimum 2-Day Streak Threshold for Habit Fire Capsules
+- **User Directive**:
+  - The fire streak capsule on habit cards (`HabitsClient.tsx`) was displaying `0d Streak` with a flame icon when a streak was 0 (e.g., `[🔥 0d Streak]`).
+  - Require that the fire capsule ONLY appears when a habit has at least a 2-day streak (`currentStreak >= 2`). If the streak is 0 or 1, do not render the capsule at all.
+- **Changes Applied**:
+  - `src/app/habits/HabitsClient.tsx`:
+    - Grid card view: Conditioned the `{currentStreak}d Streak` capsule to render strictly when `currentStreak >= 2`.
+    - Matrix list view: In the streak column, render the streak pill when `currentStreak >= 2`, otherwise display a neutral dash `—`.
+  - `src/components/dashboard/TodayRitualsCard.tsx`:
+    - Updated streak badge to only render when `streak >= 2`, removing `0` streak fire pills (`🔥 0`) from the dashboard checklist.
+  - `src/app/growth/GrowthClient.tsx`:
+    - Updated Top Anchor Habits streak flame badge to require `streak >= 2` for consistent behavior across all views.
+- **Validation**:
+  - Verified with `npx tsc --noEmit` (0 errors).
+  - HTTP `GET /habits`, `GET /`, and `GET /growth` all verified with status `200`.
+  - Habit cards and checklist items with 0 or 1 day streaks (e.g. DBMS, Coursera, Read a Book) no longer show any `0` fire capsule; only habits with 2+ consecutive days (e.g. Coding / Paper with 4d) display the flame streak badge.
+
+---
+
+### Step 30: Sidebar Navigation Typography & Icon Size Scaling
+- **User Directive**:
+  - Make the sidebar icon and text slightly more prominent and bigger for enhanced visual balance, presence, and effortless legibility.
+- **Changes Applied**:
+  - `src/components/layout/Sidebar.tsx`:
+    - Scaled navigation item icon containers to `w-11 h-11` (44px) with organic `rounded-2xl` styling.
+    - Scaled navigation and settings Lucide icons to `w-5.5 h-5.5` (22px) with crisp `stroke-[2]` definition.
+    - Scaled navigation typography to `text-[16px]` (1rem) with balanced `px-3.5 py-2.5` touch padding and `gap-3.5`.
+    - Elevated brand logo typography to `text-3xl sm:text-[34px]`.
+    - Broadened desktop sidebar width to `w-68 sm:w-[17.5rem]` (280px) with generous `px-6 py-7` gutters on desktop viewports.
+- **Validation**:
+  - `npx tsc --noEmit` verified cleanly with 0 errors.
+
+---
+
+### Step 31: Field Notes Creation Date & Calendar Accuracy Audit
+- **Root Cause & User Feedback**:
+  - In `src/app/notes/NotesClient.tsx`, note cards displayed "Yesterday" for notes that were written several days prior (such as note "IDEA", created on September 19, 2026).
+  - Two issues caused this:
+    1. The card footer was displaying `{formatNoteDate(note.updatedAt)}` instead of `{formatNoteDate(note.createdAt)}` (the actual timestamp when the note was written).
+    2. `formatNoteDate` previously computed a naive 24-hour millisecond difference (`Math.floor(diffMs / 86400000)`), which could inaccurately label multi-day-old notes as "Yesterday" without checking calendar day boundaries.
+- **Changes Applied**:
+  - `src/app/notes/NotesClient.tsx`:
+    - Rewrote `formatNoteDate` to perform calendar-accurate day comparison (matching `getFullYear()`, `getMonth()`, and `getDate()`):
+      - If created today: displays `Today`.
+      - If created yesterday on the calendar: displays `Yesterday`.
+      - If created prior to yesterday: displays the actual calendar date (e.g. `Sep 19` for current year, or `Sep 19, 2026`).
+    - Updated note list cards (both pinned and regular) to pass `note.createdAt` instead of `note.updatedAt`.
+    - Added detailed tooltip `title` (`Written on Sat, Sep 19, 2026`) on hover over the clock badge.
+    - Updated active note editor footer info bar to display `Written {formatNoteDate(selectedNote.createdAt)}`.
+- **Validation**:
+  - TypeScript check (`npx tsc --noEmit`) succeeded with 0 errors.
+  - HTTP `GET /notes` returned 200 OK.
+  - Note "IDEA" written on September 19 now accurately displays `Sep 19` rather than `Yesterday`.
+
+---
+
+### Step 32: Cinematic Video Landing Page with Liquid Glass Effect
+- **User Directive**:
+  - Implement a single-page hero landing page with a fullscreen looping background video, glassmorphic navigation, and cinematic typography based on the provided design specification, faithfully integrated with the **Rooted®** brand theme.
+- **Components & Features Implemented**:
+  - `src/app/globals.css`:
+    - Imported `Instrument Serif` (Google Font) and `Inter` at the top of the stylesheet.
+    - Added the `.liquid-glass` styling with luminance blending, inner border glow, 4px backdrop blur, and pseudo-element gradient border with XOR mask composite.
+    - Defined `@keyframes fade-rise` and classes `.animate-fade-rise`, `.animate-fade-rise-delay`, and `.animate-fade-rise-delay-2`.
+  - `src/middleware.ts`:
+    - Whitelisted `"/landing(.*)"` in `isPublicRoute` so the landing page is accessible publicly without requiring immediate authentication.
+  - `src/components/layout/AppShell.tsx`:
+    - Added `pathname?.startsWith("/landing")` to `isStandalonePage` to render the landing page without the application dashboard sidebar.
+  - `src/app/landing/page.tsx`:
+    - **Fullscreen Background Video**: `<video>` element with `autoPlay`, `loop`, `muted`, `playsInline`, `object-cover` positioned `absolute inset-0 z-0`.
+    - **Navigation Bar**: `Rooted®` logo in `Instrument Serif`, navigation links (`Home`, `Habits`, `Seasons`, `Milestones`, `Growth`), and liquid-glass CTA button.
+    - **Hero Section**:
+      - H1: *"Where dreams rise through the silence."* with `Instrument Serif`, font size `text-5xl sm:text-7xl md:text-8xl`, negative letter spacing, and contrast `<em className="text-neutral-400">` styling.
+      - Subtext: Dedicated copy for deep thinkers, bold creators, and quiet rebels.
+      - Primary CTA Button: Large pill button with `.liquid-glass`, `animate-fade-rise-delay-2`, routing authenticated users to `/` ("Enter Sanctuary") and new visitors to `/sign-up` ("Begin Journey").
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - HTTP `GET /landing` verified with status `200`.
+  - Core routes (`/`, `/habits`, `/notes`) all verified with status `200`.
+
+---
+
+### Step 34: Seamless Landing Route Elimination & Root Onboarding Flow
+- **User Directive**:
+  - The default URL `http://localhost:3000` must serve the landing page for any new/first-time visitors.
+  - The URL `http://localhost:3000/landing` must NOT exist as a standalone route; visiting it must immediately redirect to `http://localhost:3000`.
+- **Changes Applied**:
+  - **Redirect Enforcement**:
+    - `next.config.ts`: Configured `async redirects()` with a 308 permanent redirect rule from `/landing` $\rightarrow$ `/`.
+    - `src/middleware.ts`: Intercepts `req.nextUrl.pathname === "/landing"` directly and issues a `NextResponse.redirect(new URL("/", req.url))` before route evaluation.
+  - **Sign-Out Continuity**:
+    - `src/components/layout/Sidebar.tsx` & `src/app/settings/SettingsClient.tsx`: Updated `signOut({ redirectUrl: "/" })` so logging out returns users directly to the Rooted landing page rather than a raw sign-in prompt.
+  - **Root URL Experience**:
+    - `http://localhost:3000` (unauthenticated/first-time visitor): Renders `<LandingView />` with full-screen looping video, liquid glass styling, and Instrument Serif typography without the dashboard sidebar.
+    - `http://localhost:3000` (authenticated): Renders the personal Sanctuary dashboard with Header Capsules and the daily Journal/Task horizons.
+    - `http://localhost:3000/landing`: Returns `HTTP 308 Permanent Redirect` pointing to `/`.
+- **Validation**:
+  - `curl -I http://localhost:3000/landing` verified: returns `HTTP/1.1 308 Permanent Redirect` with `Location: /`.
+  - `curl -I http://localhost:3000/` verified: returns `HTTP/1.1 200 OK` serving the Landing Page when unauthenticated.
+  - TypeScript check (`npx tsc --noEmit`) passes with 0 errors.
+
+---
+
+### Step 35: Animated Multi-Section Landing Page Integration (`like_style.html`)
+- **User Directive**:
+  - Implement the remaining sections of the landing page using the design, layout, and animations from `design/like_style.html`.
+  - Preserve our existing fullscreen video hero section at the top.
+  - Blend Rooted's theme (warm linen `#FAF7F0`, deep forest green `#1E3127`, terracotta `#D98A6C`, sage `#7C9A86`) and core project pillars (Daily Sanctuary, Habit Matrix & Graduation, Botanical Milestones, Seasons Rest) into the page.
+  - Retain all interactive animations: smooth blur reveal, panel zoom, word-by-word reveal, drifting background forms, floating cursor preview, and video in-view autoplay.
+- **Changes Applied**:
+  - `src/app/globals.css`:
+    - Defined `@keyframes drift1`, `drift2`, `drift3` with `.drift-a`, `.drift-b`, `.drift-c`.
+    - Added `[data-reveal]` and `[data-reveal].is-in` (slide-up 48px + blur 10px transition using `cubic-bezier(.22, 1, .36, 1)`).
+    - Added `[data-panel-img]` and `[data-panel-img].is-in` (subtle zoom & translateY transition).
+    - Added `.word-reveal` and `.is-in .word-reveal` (word-by-word staggered reveal).
+    - Added `@media (prefers-reduced-motion: reduce)` accessibility overrides.
+  - `src/components/landing/useLandingAnimations.ts`:
+    - Created modular React hook coordinating all client DOM interactions safely:
+      - `wrapWords`: TreeWalker text tokenizer wrapping words in `.word-reveal` with progressive `transitionDelay`.
+      - `IntersectionObserver`: Triggers `.is-in` on `[data-reveal]` and `[data-panel-img]`.
+      - `Parallax`: Window scroll listener translating `[data-parallax]` elements on `requestAnimationFrame`.
+      - `CursorPreview`: Attaches mouse listeners on `[data-preview]` elements, moving the `#cursor-preview` floating card to pointer coordinates (`clientX + 28px`, `clientY - 80px`).
+      - `InViewVideo`: Video observer auto-playing/pausing videos as they scroll into/out of view.
+  - `src/components/landing/LandingView.tsx`:
+    - **Hero Section**: Preserved fullscreen looping background video with ambient drifting blurred forms, glassmorphic header, and Instrument Serif typography.
+    - **Section 1: Selected Practice Reel (`#practice`)**:
+      - *Panel 01*: Panoramic video card for Daily Sanctuary & Focus Dials.
+      - *Panels 02 & 03*: Asymmetric staggered grid for Habit Matrix & Ritual Graduation and Botanical Milestones.
+      - *Panel 04*: Full-bleed banner for Seasonal History & Sleep Recovery.
+    - **Section 2: The Rooted Method (`#method`)**:
+      - Soft sage tinted section (`#EBF1E8`) with 3-column philosophy cards (*Plan & Plant*, *Tend & Flow*, *Harvest & Master*) with image zoom on hover.
+    - **Section 3: Sanctuary Capabilities with Cursor Follower (`#capabilities`)**:
+      - Deep forest green (`#1E3127`) section with 6 numbered rows and floating cursor preview image.
+    - **Section 4: Mindful Reflection (`#reflection`)**:
+      - Editorial testimonial with grayscale-to-color portrait card and Lucide `Quote` icon.
+    - **Section 5: Final CTA & Parallax Wordmark (`#contact`)**:
+      - Huge cropped parallax outline text (`ROOTED IN RHYTHM`), editorial invitation, and liquid glass CTA button.
+    - **Section 6: Editorial Footer**:
+      - Botanical 9-dot glyph, anchor navigation, and copyright mark.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - HTTP `GET /` verified with status 200 OK serving the full page.
+
+---
+
+### Step 36: Full-Bleed Banner Transformation (Panel 04 - Seasons & Rest)
+- **User Directive**:
+  - Make the "04 / SEASONS & REST — Seasonal History & Sleep Recovery" component take the full width of the screen instead of being constrained inside the standard max-width card container.
+- **Changes Applied**:
+  - `src/components/landing/LandingView.tsx`:
+    - Removed the wrapping `<div className="max-w-7xl mx-auto px-6 sm:px-10">` and `rounded-3xl border border-[#EAE5D8]` from Panel 04.
+    - Updated Panel 04 container to `relative w-full overflow-hidden aspect-[16/12] sm:aspect-[21/9]`, stretching edge-to-edge across 100% of the viewport.
+    - Kept inner text content perfectly aligned with the rest of the page via `<div className="absolute bottom-0 left-0 w-full"><div className="max-w-7xl mx-auto px-6 sm:px-10 pb-8 sm:pb-12 ...">`.
+    - Adjusted section `#practice` padding from `pb-16` to `pb-0` so the full-bleed banner seamlessly meets the subsequent `#method` section without an awkward background gap.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - Confirmed edge-to-edge responsive layout across all breakpoints.
+
+---
+
+### Step 37: Animated ROOTED Parallax Manifesto Interlude
+- **User Directive**:
+  - Fill the large empty gap beneath the Evelyn Vance testimonial quote with an animated typographic section echoing the scroll animation of the hero's giant "ROOTED" wordmark.
+  - Include relevant, inspiring copy reflecting the philosophy of the project.
+- **Changes Applied**:
+  - `src/components/landing/LandingView.tsx`:
+    - Tightened `#reflection` section bottom padding from `pb-28 sm:pb-36` to `pb-16 sm:pb-20` to prevent awkward whitespace.
+    - Inserted a dedicated **Animated Parallax Interlude Section**:
+      - **Ambient Drifting Shapes**: Floating translucent bubbles (`.drift-a`, `.drift-b`, `.drift-c`) with subtle sage and terracotta borders and backdrop blur matching the hero.
+      - **Giant Animated Parallax Wordmark ("ROOTED")**: Centered `text-[24vw] sm:text-[21vw]` in *Instrument Serif* with `data-parallax="0.32"`, styled with elegant text stroke (`-webkit-text-stroke: 1.5px rgba(30, 49, 39, 0.2)`) and translucent fill (`text-[#1E3127]/[0.08]`), smoothly gliding as the user scrolls.
+      - **Foreground Editorial Manifesto**:
+        - Pill capsule: *"The Rhythm of Life Architecture"*.
+        - Dynamic heading with `[data-reveal-words="true"]`: *"Small daily seeds yield towering groves over seasons."*
+        - Relevant copy: *"Every 20-minute intention planted today becomes the milestone you celebrate tomorrow. No frantic hustle. Just grounded, enduring progress."*
+    - Streamlined the subsequent `#contact` section, removing the redundant faint spacer text to ensure balanced vertical rhythm.
+  - `src/components/landing/useLandingAnimations.ts`:
+    - Updated parallax scroll math to calculate vertical translation relative to the viewport center for mid-page elements (`(rect.top - window.innerHeight * 0.5) * speed`), ensuring fluid, non-wrapping parallax motion.
+- **Validation**:
+  - `npx tsc --noEmit` passed with 0 errors.
+  - Verified seamless visual connection and scroll responsiveness on `http://localhost:3000`.
+
+---
+
+### Step 38: Remote MCP & AI Assistant Connectors (Gemini, Claude, Grok, ChatGPT)
+- **Objective**:
+  - Transform Rooted into an AI-connected productivity platform by exposing an open, standard Model Context Protocol (MCP) Remote Server.
+  - Allow Gemini (Spark), Claude, Grok (xAI), and ChatGPT in the browser to directly query and manage the user's daily intentions, habits, rest rhythms, and thoughts.
+- **Protocol & Backend Implementation**:
+  - **Data Security & Multi-Tenancy**:
+    - Added `ApiKey` model to `prisma/schema.prisma` (`id`, `name`, `keyHash`, `keyPrefix`, `userId`, `lastUsedAt`, `expiresAt`, `createdAt`, `updatedAt`).
+    - Synced schema to Turso LibSQL cloud database with unique hash constraints and user indices.
+    - Personal Access Tokens (PATs) use cryptographic random bytes (`rooted_pat_<48hex>`). Only SHA-256 hashes are persisted in the database; raw tokens are shown only once upon creation.
+    - All database queries in the MCP tool dispatcher strictly filter by `where: { userId }`, guaranteeing total multi-tenant data isolation.
+  - **Endpoints**:
+    - `src/middleware.ts`: Whitelisted `"/api/mcp(.*)"` in Clerk's `isPublicRoute` so external AI cloud servers can authenticate via Bearer token or URL parameter without redirection.
+    - `src/lib/mcp/sessionStore.ts`: In-memory SSE session manager mapping `sessionId` to user IDs and `ReadableStreamDefaultController`.
+    - `src/lib/mcp/dispatcher.ts`: Standard JSON-RPC 2.0 dispatcher supporting `initialize`, `notifications/initialized`, `ping`, `tools/list`, and `tools/call`.
+    - `src/app/api/mcp/sse/route.ts`: SSE handshake announcing message endpoint and providing 20s keep-alive heartbeats.
+    - `src/app/api/mcp/messages/route.ts`: Session-bound JSON-RPC POST route with CORS.
+    - `src/app/api/mcp/route.ts`: Universal root entry point supporting both SSE (`Accept: text/event-stream`) and direct HTTP POST JSON-RPC.
+  - **Rooted Toolset (`src/lib/mcp/tools.ts`)**:
+    1. `get_today_sanctuary`: Harmony Score (0-100), habit checklist, today's intentions, overdue counts, sleep recovery.
+    2. `list_intentions`: Filter intentions by horizon (`TODAY`, `UPCOMING`, `ANYTIME`, `ALL`), status, or priority.
+    3. `create_intention`: Plant tasks/intentions with title, category, priority, and optional due date.
+    4. `complete_intention`: Mark intentions completed by ID or name matching.
+    5. `reschedule_overdue_tasks`: Shift overdue tasks to today (Morning Reset).
+    6. `list_habits`: All active habits, frequencies, streaks, and today's status.
+    7. `log_habit`: Check off habits and automatically recalculate rolling streaks.
+    8. `add_note`: Record thoughts and reflections in the Thought Garden.
+- **Settings UI (`src/app/settings/SettingsClient.tsx`)**:
+  - Added dedicated **AI Assistant Connectors (Remote MCP)** card with Rooted botanical aesthetic:
+    - 1-Click "Generate Token" modal with single-view token display and copy feedback.
+    - Interactive provider tabs for **Gemini Spark**, **Claude**, **Grok**, and **ChatGPT** showing exact configuration JSON and URLs.
+    - Active API Keys table with key prefix preview, creation date, last used timestamp, and instant key revocation.
+    - Local tunneling guide (`ngrok` / Cloudflare) for testing on `localhost`.
+- **Knowledge & Documentation**:
+  - Created [[10_AI_Connectors_and_Remote_MCP]] detailing protocol specs, Mermaid diagrams, and configuration workflows.
+  - Indexed in [[00_Index]].
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - Automated integration test `scratch/test_mcp.ts` verified `initialize`, `tools/list` (8 tools), `tools/call` (`get_today_sanctuary`), and SSE stream connection. All tests passed with 100% success.
+
+---
+
+### Step 40: Enhanced Gemini Integration Settings & Spark UX
+- **User Problem & Requirements**:
+  - Users needed explicit, foolproof instructions for connecting Rooted to Google Gemini Web as a custom MCP app.
+  - The instructions required exact navigation steps:
+    1. Open Gemini in browser (`gemini.google.com`).
+    2. Click `Settings (⚙) > Personal Intelligence > Connected Apps > Add Custom Apps`.
+    3. Paste the key on the MCP Server URL and click on Next and Connect.
+  - For Gemini usage, users required guidance on switching to the **Spark tab**, invoking with `@Rooted Sanctuary MCP Server`, clicking **Allow** for tool execution, and ready-to-use 1-click copy prompt templates.
+- **Architectural Implementation (`src/app/settings/SettingsClient.tsx`)**:
+  - **Persistent Platform Tabs**: Elevated the platform selector (`Gemini Spark`, `Claude`, `Grok`, `ChatGPT`) and Public Tunnel Host configuration to be always visible in the Settings view, so users can review instructions and copy prompt chips even when not in an active key-creation modal flow.
+  - **Card 1: To Integrate Rooted to Gemini**:
+    - Step 1: Open Gemini in the browser with clickable link to `gemini.google.com`.
+    - Step 2: Styled breadcrumb path: `⚙ Settings` $\rightarrow$ `Personal Intelligence` $\rightarrow$ `Connected Apps` $\rightarrow$ `+ Add Custom Apps`.
+    - Step 3: MCP URL input box with 1-click "Copy MCP URL" button, preloaded with active token or active key prefix.
+    - Pro-Tips callout explicitly clarifying that `Client ID` & `Client secret` should remain empty, and server name is `Rooted Sanctuary MCP Server`.
+  - **Card 2: To Use on Gemini**:
+    - Step 1: Switch to the Spark tab in Gemini's left sidebar.
+    - Step 2: Mention Rooted with `@` (`@Rooted Sanctuary MCP Server`).
+    - Step 3: Click "Allow" on first tool execution.
+    - Step 4: Manage sanctuary conversationally.
+  - **Click-to-Copy Quick Prompts**:
+    - Added 4 interactive cards with 1-click copy:
+      - 📊 *Daily Sanctuary Briefing*
+      - 🧹 *Reschedule Overdue Tasks*
+      - 🌱 *Plant a New Intention*
+      - ✅ *Check Off a Habit*
+  - **Modal Flow**: Added `setIsModalOpen(false)` on successful key generation to smoothly close the creation modal and immediately display the generated key banner.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - Dev server and Cloudflare tunnel running smoothly.
+
+- **Collapsible AI Setup Guide & Refresh State**:
+  - Encapsulated the entire AI platform guide container (Public Tunnel Host, 4 platform tabs, step-by-step instructions, and quick prompts) into a conditional container governed by `isGuideOpen || newlyCreatedKey`.
+  - Configured state to default to `false` so on page load or refresh (`F5`), the settings screen remains compact and shrunk by default.
+  - Eliminated distracting static toggle buttons from the initial state: the guide opens solely when the user clicks **"Generate Connector Key"**.
+  - **Cancel Safety**: Clicking "Cancel" (or the backdrop / close button) in the New Connector Key modal immediately shrinks the guide back down and clears any stale state.
+  - **Contextual Shrink Guide Controls**: When the guide is open, clearly visible "Shrink Guide" buttons appear in the section header, the top guide banner, and at the bottom of the instructions, allowing one-click collapsing back to the calm baseline view.
+  - **Dedicated Quick Prompts Section**: Decoupled prompt cards from individual AI platform tabs into a standalone section below the tabs for all assistants.
+  - Verified with `npx tsc --noEmit` (0 errors).
+
+---
+
+### Step 41: Vercel Production Deployment Preparation & Audit
+- **Objective**:
+  - Prepare the entire Rooted repository for zero-downtime, 1-click production deployment on **Vercel**.
+  - Verify complete database connectivity to **Turso LibSQL** in the cloud.
+  - Audit builds, scripts, environment templates, and secrets exclusion.
+- **Audit & Implementation Results**:
+  1. **Dual Database Verification (Turso LibSQL)**:
+     - Ran automated connectivity tests against `TURSO_DATABASE_URL` (`libsql://rooted-db-samama-karim.aws-ap-south-1.turso.io`).
+     - Verified all 8 tables and records are active in the cloud: 4 Goals, 7 Milestones, 5 Habits, 44 HabitLogs, 60 Tasks, 14 SleepLogs, 1 SleepSetting, 6 Notes, 4 ApiKeys.
+  2. **Vercel Build Script Optimization**:
+     - Configured `package.json` build command to `"build": "prisma generate && next build"` to ensure Prisma Client generates for the Vercel Linux container environment before static page rendering.
+  3. **Local Production Build Verification**:
+     - Executed full `next build` simulation: successfully compiled all static and dynamic routes (`/`, `/tasks`, `/habits`, `/seasons`, `/milestones`, `/growth`, `/notes`, `/settings`, and `/api/mcp` endpoints) with 0 errors.
+  4. **Security & Repository Hygiene**:
+     - Created `.env.example` documenting all 9 required production variables.
+     - Added `/scratch` to `.gitignore` to prevent committing binary assets (such as local `cloudflared.exe`).
+     - Verified `.env` and `.env.local` remain completely protected and untracked.
+  5. **Documentation**:
+     - Authored [[11_Vercel_and_Production_Deployment]] providing an exhaustive deployment runbook and checklist.
+     - Updated [[00_Index]].
+
+
+
+
+
+
+
+
+
+
 
 
 
