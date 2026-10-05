@@ -12,6 +12,7 @@ import {
   CheckCircle2, 
   Sparkles,
   Trash2,
+  Pencil,
   Compass,
   Star,
   X,
@@ -20,8 +21,10 @@ import {
 } from "lucide-react";
 import { 
   toggleMilestone, 
-  createGoal, 
-  createMilestone, 
+  createGoal,
+  updateGoal,
+  createMilestone,
+  updateMilestone, 
   deleteMilestone, 
   deleteGoal, 
   setActiveGoal 
@@ -95,6 +98,21 @@ export function MilestonesClient({ initialGoals }: MilestonesClientProps) {
   // Single Milestone Add Form State
   const [singleMilestoneTitle, setSingleMilestoneTitle] = useState("");
   const [singleMilestoneStage, setSingleMilestoneStage] = useState("Milestone");
+
+  // Edit Goal Form State
+  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+  const [editGoalTitle, setEditGoalTitle] = useState("");
+  const [editGoalDescription, setEditGoalDescription] = useState("");
+  const [editGoalCategory, setEditGoalCategory] = useState("Study");
+  const [editGoalTargetDate, setEditGoalTargetDate] = useState("");
+
+  // Edit Milestone Form State
+  const [editingMilestone, setEditingMilestone] = useState<{
+    milestone: Milestone;
+    goalId: string;
+  } | null>(null);
+  const [editMilestoneTitle, setEditMilestoneTitle] = useState("");
+  const [editMilestoneStage, setEditMilestoneStage] = useState("Milestone");
 
   // Toggle Milestone completion
   const handleMilestoneToggle = (milestoneId: string, goalId: string) => {
@@ -238,6 +256,94 @@ export function MilestonesClient({ initialGoals }: MilestonesClientProps) {
     });
   };
 
+  // Open Edit Goal Modal
+  const handleOpenEditGoal = (goal: Goal) => {
+    setEditingGoal(goal);
+    setEditGoalTitle(goal.title);
+    setEditGoalDescription(goal.description || "");
+    setEditGoalCategory(goal.category || "Study");
+    setEditGoalTargetDate(
+      goal.targetDate ? new Date(goal.targetDate).toISOString().split("T")[0] : ""
+    );
+  };
+
+  // Submit Edit Goal
+  const handleUpdateGoalSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingGoal || !editGoalTitle.trim()) return;
+
+    const goalId = editingGoal.id;
+    const updatedTitle = editGoalTitle.trim();
+    const updatedDescription = editGoalDescription.trim() || null;
+    const updatedCategory = editGoalCategory;
+    const updatedTargetDate = editGoalTargetDate ? new Date(editGoalTargetDate) : null;
+
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.id === goalId
+          ? {
+              ...g,
+              title: updatedTitle,
+              description: updatedDescription,
+              category: updatedCategory,
+              targetDate: updatedTargetDate,
+            }
+          : g
+      )
+    );
+    setEditingGoal(null);
+
+    startTransition(async () => {
+      await updateGoal(goalId, {
+        title: updatedTitle,
+        description: updatedDescription,
+        category: updatedCategory,
+        targetDate: editGoalTargetDate || null,
+      });
+    });
+  };
+
+  // Open Edit Milestone Modal
+  const handleOpenEditMilestone = (milestone: Milestone, goalId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingMilestone({ milestone, goalId });
+    setEditMilestoneTitle(milestone.title);
+    setEditMilestoneStage(milestone.stage);
+  };
+
+  // Submit Edit Milestone
+  const handleUpdateMilestoneSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingMilestone || !editMilestoneTitle.trim()) return;
+
+    const { milestone, goalId } = editingMilestone;
+    const updatedTitle = editMilestoneTitle.trim();
+    const updatedStage = editMilestoneStage;
+
+    setGoals((prev) =>
+      prev.map((g) =>
+        g.id === goalId
+          ? {
+              ...g,
+              milestones: g.milestones.map((m) =>
+                m.id === milestone.id
+                  ? { ...m, title: updatedTitle, stage: updatedStage }
+                  : m
+              ),
+            }
+          : g
+      )
+    );
+    setEditingMilestone(null);
+
+    startTransition(async () => {
+      await updateMilestone(milestone.id, {
+        title: updatedTitle,
+        stage: updatedStage,
+      });
+    });
+  };
+
   const getStageIcon = (stage: string, isCompleted: boolean) => {
     if (stage.toLowerCase() === "seed") {
       return <Sprout className={`w-3.5 h-3.5 ${isCompleted ? "text-[#D4A373]" : "text-[#8E9E94]"}`} />;
@@ -369,14 +475,24 @@ export function MilestonesClient({ initialGoals }: MilestonesClientProps) {
                         <span className="font-serif text-3xl md:text-4xl font-bold text-[#FAF7F0]">
                           {goal.progressPercentage}%
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteGoal(goal.id)}
-                          className="opacity-60 hover:opacity-100 p-1.5 rounded-lg text-[#D98A6C] hover:bg-[#2A3F34] transition-all cursor-pointer"
-                          title="Delete Life Goal"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditGoal(goal)}
+                            className="opacity-70 hover:opacity-100 p-1.5 rounded-lg text-[#8FA697] hover:text-[#FAF7F0] hover:bg-[#2A3F34] transition-all cursor-pointer"
+                            title="Edit Life Goal"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteGoal(goal.id)}
+                            className="opacity-60 hover:opacity-100 p-1.5 rounded-lg text-[#D98A6C] hover:bg-[#2A3F34] transition-all cursor-pointer"
+                            title="Delete Life Goal"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                       <span className="text-xs text-[#8FA697]">
                         {completedMilestones} of {goal.milestones.length} milestones honored
@@ -453,15 +569,25 @@ export function MilestonesClient({ initialGoals }: MilestonesClientProps) {
                             </div>
                           </button>
 
-                          {/* Delete Milestone Button */}
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteMilestone(m.id, goal.id, e)}
-                            className="opacity-0 group-hover/item:opacity-100 p-1 text-[#8FA697] hover:text-[#D98A6C] rounded-md transition-opacity cursor-pointer shrink-0"
-                            title="Remove milestone step"
-                          >
-                            <X className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Milestone Action Buttons (Edit & Delete) */}
+                          <div className="flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => handleOpenEditMilestone(m, goal.id, e)}
+                              className="p-1 text-[#8FA697] hover:text-[#FAF7F0] rounded-md transition-colors cursor-pointer"
+                              title="Edit milestone step"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteMilestone(m.id, goal.id, e)}
+                              className="p-1 text-[#8FA697] hover:text-[#D98A6C] rounded-md transition-colors cursor-pointer"
+                              title="Remove milestone step"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
 
@@ -774,6 +900,213 @@ export function MilestonesClient({ initialGoals }: MilestonesClientProps) {
                   className="px-4 py-2 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-all cursor-pointer disabled:opacity-50 shadow-xs"
                 >
                   {isPending ? "Adding..." : "Add Milestone Step"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal: Edit Life Goal */}
+      {editingGoal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FAF7F0] rounded-3xl w-full max-w-lg border border-[#EAE5D8] shadow-2xl overflow-hidden animate-scale-in">
+            {/* Modal Header */}
+            <div className="bg-[#1E3127] p-6 text-[#FAF7F0] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#2A3F34] flex items-center justify-center text-[#7C9A86]">
+                  <Pencil className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-xl font-bold tracking-tight text-[#FAF7F0]">
+                    Edit Life Roadmap
+                  </h3>
+                  <p className="text-xs text-[#8FA697] mt-0.5">
+                    Refine your goal title, category, and target horizon.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditingGoal(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#8FA697] hover:text-[#FAF7F0] hover:bg-[#2A3F34] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form Body */}
+            <form onSubmit={handleUpdateGoalSubmit} className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              {/* Title */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#1A241E] uppercase tracking-wider block">
+                  Goal Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Master Deep Learning & AI"
+                  value={editGoalTitle}
+                  onChange={(e) => setEditGoalTitle(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-[#FFFFFF] border border-[#EAE5D8] text-sm font-semibold text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+                  autoFocus
+                />
+              </div>
+
+              {/* Category & Target Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* Category */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#1A241E] uppercase tracking-wider block">
+                    Category
+                  </label>
+                  <select
+                    value={editGoalCategory}
+                    onChange={(e) => setEditGoalCategory(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFFFFF] border border-[#EAE5D8] text-xs font-semibold text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+                  >
+                    {CATEGORIES.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Target Date */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-[#1A241E] uppercase tracking-wider block">
+                    Target Completion Date
+                  </label>
+                  <input
+                    type="date"
+                    value={editGoalTargetDate}
+                    onChange={(e) => setEditGoalTargetDate(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-[#FFFFFF] border border-[#EAE5D8] text-xs text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#586B60] uppercase tracking-wider block">
+                  Vision / Description (Optional)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Why does this goal matter to your life?"
+                  value={editGoalDescription}
+                  onChange={(e) => setEditGoalDescription(e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl bg-[#FFFFFF] border border-[#EAE5D8] text-xs text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86] resize-none"
+                />
+              </div>
+
+              {/* Submit Buttons */}
+              <div className="pt-3 border-t border-[#EAE5D8] flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setEditingGoal(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#586B60] hover:text-[#1A241E] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || !editGoalTitle.trim()}
+                  className="px-5 py-2.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  {isPending ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Edit Milestone Step */}
+      {editingMilestone && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FAF7F0] rounded-3xl w-full max-w-md border border-[#EAE5D8] shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-[#1E3127] p-5 text-[#FAF7F0] flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-[#2A3F34] flex items-center justify-center text-[#7C9A86]">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-lg font-bold tracking-tight text-[#FAF7F0]">
+                    Edit Milestone Step
+                  </h3>
+                  <p className="text-[11px] text-[#8FA697]">
+                    Update step title and growth stage.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditingMilestone(null)}
+                className="w-7 h-7 rounded-full flex items-center justify-center text-[#8FA697] hover:text-[#FAF7F0] hover:bg-[#2A3F34] transition-colors cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdateMilestoneSubmit} className="p-5 space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#1A241E] uppercase tracking-wider block">
+                  Milestone Title *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Build prototype or pass checkpoint"
+                  value={editMilestoneTitle}
+                  onChange={(e) => setEditMilestoneTitle(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#FFFFFF] border border-[#EAE5D8] text-xs font-semibold text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-[#586B60] uppercase tracking-wider block">
+                  Botanical Growth Stage
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: "Seed", label: "🌱 Seed", desc: "First initial sprout" },
+                    { id: "Sprout", label: "🌿 Sprout", desc: "Core growth phase" },
+                    { id: "Milestone", label: "🌳 Milestone", desc: "Major chapter completion" },
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setEditMilestoneStage(s.id)}
+                      className={`p-2.5 rounded-xl border text-center transition-all cursor-pointer ${
+                        editMilestoneStage === s.id
+                          ? "bg-[#1E3127] border-[#1E3127] text-[#FAF7F0] shadow-xs"
+                          : "bg-[#FFFFFF] border-[#EAE5D8] text-[#586B60] hover:bg-[#FAF8F2]"
+                      }`}
+                    >
+                      <span className="text-xs font-bold block">{s.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setEditingMilestone(null)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-[#586B60] hover:text-[#1A241E] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending || !editMilestoneTitle.trim()}
+                  className="px-4 py-2 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-all cursor-pointer disabled:opacity-50 shadow-xs"
+                >
+                  {isPending ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
