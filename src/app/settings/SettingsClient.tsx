@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@clerk/nextjs";
 import {
   User,
@@ -26,8 +26,13 @@ import {
   Globe,
   ChevronUp,
   X,
+  Download,
+  RefreshCw,
+  HeartHandshake,
+  Info,
 } from "lucide-react";
 import { createApiKeyAction, revokeApiKeyAction } from "@/lib/apiActions";
+import { exportUserData, clearAllUserData } from "@/lib/actions";
 
 export interface ApiKeyItem {
   id: string;
@@ -127,6 +132,88 @@ export function SettingsClient({
   const [sleepReminder, setSleepReminder] = useState(true);
   const [taskReminder, setTaskReminder] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+
+  // Load and persist notification reminder preferences
+  useEffect(() => {
+    try {
+      const savedSleep = localStorage.getItem("rooted_settings_sleep_reminder");
+      if (savedSleep !== null) setSleepReminder(savedSleep === "true");
+      const savedTask = localStorage.getItem("rooted_settings_task_reminder");
+      if (savedTask !== null) setTaskReminder(savedTask === "true");
+    } catch {}
+  }, []);
+
+  const handleToggleSleepReminder = async (enabled: boolean) => {
+    setSleepReminder(enabled);
+    try {
+      localStorage.setItem("rooted_settings_sleep_reminder", String(enabled));
+      if (enabled && typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "default") {
+          await Notification.requestPermission();
+        }
+      }
+    } catch {}
+  };
+
+  const handleToggleTaskReminder = async (enabled: boolean) => {
+    setTaskReminder(enabled);
+    try {
+      localStorage.setItem("rooted_settings_task_reminder", String(enabled));
+      if (enabled && typeof window !== "undefined" && "Notification" in window) {
+        if (Notification.permission === "default") {
+          await Notification.requestPermission();
+        }
+      }
+    } catch {}
+  };
+
+  // ─── Data Privacy & Modals State ───
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
+  const [clearConfirmInput, setClearConfirmInput] = useState("");
+  const [isClearing, setIsClearing] = useState(false);
+  const [isFormulaModalOpen, setIsFormulaModalOpen] = useState(false);
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
+
+  const handleExportData = async () => {
+    try {
+      setIsExporting(true);
+      const exportPayload = await exportUserData();
+      const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
+        JSON.stringify(exportPayload, null, 2)
+      )}`;
+      const downloadAnchor = document.createElement("a");
+      const todayDate = new Date().toISOString().split("T")[0];
+      downloadAnchor.setAttribute("href", jsonString);
+      downloadAnchor.setAttribute("download", `rooted-sanctuary-backup-${todayDate}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+      setExportSuccess(true);
+      setTimeout(() => setExportSuccess(false), 3500);
+    } catch (err) {
+      console.error("Export failed:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleClearDataSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (clearConfirmInput !== "RESET" || isClearing) return;
+    try {
+      setIsClearing(true);
+      await clearAllUserData();
+      setIsClearModalOpen(false);
+      setClearConfirmInput("");
+      window.location.reload();
+    } catch (err) {
+      console.error("Clear data failed:", err);
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   // ─── AI Connectors State ───
   const [apiKeys, setApiKeys] = useState<ApiKeyItem[]>(initialApiKeys);
@@ -1575,14 +1662,14 @@ export function SettingsClient({
           label="Morning Sleep Check-in"
           description="Remind you to log your rest each morning"
           rightElement={
-            <ToggleSwitch enabled={sleepReminder} onChange={setSleepReminder} />
+            <ToggleSwitch enabled={sleepReminder} onChange={handleToggleSleepReminder} />
           }
         />
         <SettingsRow
           label="Daily Task Reminder"
           description="Nudge for uncompleted daily intentions"
           rightElement={
-            <ToggleSwitch enabled={taskReminder} onChange={setTaskReminder} />
+            <ToggleSwitch enabled={taskReminder} onChange={handleToggleTaskReminder} />
           }
         />
       </SettingsSection>
@@ -1618,8 +1705,13 @@ export function SettingsClient({
         />
         <SettingsRow
           label="Harmony Score Formula"
-          description="How your daily harmony is calculated"
-          onClick={() => {}}
+          description="How your daily harmony (0–100%) is calculated across habits, tasks, and rest"
+          rightElement={
+            <span className="text-xs text-[#7C9A86] font-semibold hover:underline cursor-pointer">
+              View Formula
+            </span>
+          }
+          onClick={() => setIsFormulaModalOpen(true)}
         />
       </SettingsSection>
 
@@ -1627,13 +1719,36 @@ export function SettingsClient({
       <SettingsSection title="Privacy & Data" icon={<Shield className="w-4.5 h-4.5" />}>
         <SettingsRow
           label="Export My Data"
-          description="Download all your tasks, habits, sleep logs, and milestones"
-          onClick={() => {}}
+          description="Download all your tasks, habits, sleep logs, milestones, and notes as JSON"
+          rightElement={
+            isExporting ? (
+              <span className="flex items-center gap-1.5 text-xs text-[#7C9A86] font-semibold">
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                <span>Exporting...</span>
+              </span>
+            ) : exportSuccess ? (
+              <span className="flex items-center gap-1 text-xs text-[#3B664B] font-semibold bg-[#EAF0EC] px-2.5 py-1 rounded-full border border-[#7C9A86]/20">
+                <Check className="w-3.5 h-3.5" />
+                <span>Exported</span>
+              </span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-xs text-[#1E3127] font-semibold bg-[#FAF8F2] px-3 py-1 rounded-xl border border-[#EAE5D8] hover:bg-[#F2ECE1] transition-colors">
+                <Download className="w-3.5 h-3.5 text-[#7C9A86]" />
+                <span>Download JSON</span>
+              </span>
+            )
+          }
+          onClick={handleExportData}
         />
         <SettingsRow
           label="Clear All Data"
-          description="Permanently delete all your Rooted data"
-          onClick={() => {}}
+          description="Permanently delete all your Rooted data and restore a clean slate"
+          rightElement={
+            <span className="text-xs text-[#D98A6C] font-semibold hover:underline cursor-pointer">
+              Reset Sanctuary
+            </span>
+          }
+          onClick={() => setIsClearModalOpen(true)}
         />
       </SettingsSection>
 
@@ -1648,8 +1763,13 @@ export function SettingsClient({
         />
         <SettingsRow
           label="Feedback & Support"
-          description="Share thoughts to help Rooted grow"
-          onClick={() => {}}
+          description="Share thoughts, report friction, or suggest ideas to help Rooted grow"
+          rightElement={
+            <span className="text-xs text-[#7C9A86] font-semibold hover:underline cursor-pointer">
+              Contact & Feedback
+            </span>
+          }
+          onClick={() => setIsFeedbackModalOpen(true)}
         />
       </SettingsSection>
 
@@ -1663,6 +1783,251 @@ export function SettingsClient({
           <LogOut className="w-4.5 h-4.5" />
           <span>Sign Out of Rooted</span>
         </button>
+      )}
+
+      {/* Modal: Clear All Data Confirmation */}
+      {isClearModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FAF7F0] rounded-3xl w-full max-w-md border border-[#EAE5D8] shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-[#59271E] p-6 text-[#FAF7F0] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#733428] flex items-center justify-center text-[#FAF7F0]">
+                  <AlertCircle className="w-5 h-5 text-[#F2C2BA]" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-xl font-bold tracking-tight text-[#FAF7F0]">
+                    Reset Sanctuary
+                  </h3>
+                  <p className="text-xs text-[#F2C2BA] mt-0.5">
+                    Permanent action — cannot be undone
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsClearModalOpen(false);
+                  setClearConfirmInput("");
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#F2C2BA] hover:text-[#FAF7F0] hover:bg-[#733428] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleClearDataSubmit} className="p-6 space-y-4">
+              <p className="text-xs text-[#586B60] leading-relaxed">
+                This will permanently delete all your <strong className="text-[#1A241E]">daily intentions</strong>, <strong className="text-[#1A241E]">habit logs & streaks</strong>, <strong className="text-[#1A241E]">sleep rest records</strong>, <strong className="text-[#1A241E]">life goals & milestones</strong>, and <strong className="text-[#1A241E]">field notes</strong>.
+              </p>
+
+              <div className="p-3.5 rounded-2xl bg-[#FDF5F3] border border-[#F2C2BA] text-xs text-[#8A3222] space-y-1">
+                <p className="font-bold">Confirmation Required</p>
+                <p>Type <code className="font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-[#F2C2BA]">RESET</code> below to confirm permanent deletion.</p>
+              </div>
+
+              <div>
+                <input
+                  type="text"
+                  required
+                  placeholder="Type RESET"
+                  value={clearConfirmInput}
+                  onChange={(e) => setClearConfirmInput(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-white border border-[#EAE5D8] text-sm font-semibold text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#D98A6C]"
+                  autoFocus
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsClearModalOpen(false);
+                    setClearConfirmInput("");
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#586B60] hover:text-[#1A241E] transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={clearConfirmInput !== "RESET" || isClearing}
+                  className="px-5 py-2.5 rounded-xl bg-[#8A3222] hover:bg-[#A33B29] text-[#FAF7F0] text-xs font-semibold transition-all cursor-pointer disabled:opacity-40 shadow-xs"
+                >
+                  {isClearing ? "Resetting..." : "Permanently Reset"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Harmony Score Formula */}
+      {isFormulaModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FAF7F0] rounded-3xl w-full max-w-lg border border-[#EAE5D8] shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-[#1E3127] p-6 text-[#FAF7F0] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#2A3F34] flex items-center justify-center text-[#7C9A86]">
+                  <Sparkles className="w-5 h-5 text-[#D4A373]" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-xl font-bold tracking-tight text-[#FAF7F0]">
+                    The Harmony Formula
+                  </h3>
+                  <p className="text-xs text-[#8FA697] mt-0.5">
+                    Conscious Life Rhythm Architecture
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFormulaModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#8FA697] hover:text-[#FAF7F0] hover:bg-[#2A3F34] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+              <p className="text-xs text-[#586B60] leading-relaxed">
+                Rooted does not score you on frantic busywork. The <strong>Daily Harmony Score (0–100%)</strong> measures balanced cohesion across your three primary pillars:
+              </p>
+
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-white border border-[#EAE5D8] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif text-sm font-bold text-[#1E3127]">🌿 40% — Ritual Growth (Habits)</span>
+                    <span className="text-xs font-mono font-bold text-[#7C9A86]">0.40 Weight</span>
+                  </div>
+                  <p className="text-xs text-[#586B60] leading-relaxed">
+                    Evaluates consistency of daily rituals completed today plus your rolling 7-day adherence rate.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border border-[#EAE5D8] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif text-sm font-bold text-[#1E3127]">📋 40% — Daily Intentions (Tasks)</span>
+                    <span className="text-xs font-mono font-bold text-[#D98A6C]">0.40 Weight</span>
+                  </div>
+                  <p className="text-xs text-[#586B60] leading-relaxed">
+                    Ratio of intentions fulfilled strictly within today&apos;s conscious horizon (completed vs total scheduled).
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white border border-[#EAE5D8] space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-serif text-sm font-bold text-[#1E3127]">🌙 20% — Rest Sanctuary (Sleep)</span>
+                    <span className="text-xs font-mono font-bold text-[#3D637E]">0.20 Weight</span>
+                  </div>
+                  <p className="text-xs text-[#586B60] leading-relaxed">
+                    Reflects sleep consistency against your baseline target (8.0h default), granting optimal vitality within ±30 minutes.
+                  </p>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-[#EAF0EC] border border-[#7C9A86]/30 text-xs text-[#3B664B] flex items-start gap-2.5">
+                <Info className="w-4 h-4 shrink-0 mt-0.5 text-[#7C9A86]" />
+                <p className="leading-relaxed">
+                  <strong>Days Rooted Bonus:</strong> Sustaining consecutive check-in streaks acts as soil nutrition, stabilizing your score against occasional missed days.
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsFormulaModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-[#1E3127] text-[#FAF7F0] text-xs font-semibold hover:bg-[#2A3F34] transition-all cursor-pointer shadow-xs"
+                >
+                  Understood
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Feedback & Support */}
+      {isFeedbackModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-[#FAF7F0] rounded-3xl w-full max-w-md border border-[#EAE5D8] shadow-2xl overflow-hidden animate-scale-in">
+            <div className="bg-[#1E3127] p-6 text-[#FAF7F0] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#2A3F34] flex items-center justify-center text-[#7C9A86]">
+                  <HeartHandshake className="w-5 h-5 text-[#D4A373]" />
+                </div>
+                <div>
+                  <h3 className="font-serif text-xl font-bold tracking-tight text-[#FAF7F0]">
+                    Feedback & Sanctuary Support
+                  </h3>
+                  <p className="text-xs text-[#8FA697] mt-0.5">
+                    Help Rooted flourish and grow
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFeedbackModalOpen(false)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-[#8FA697] hover:text-[#FAF7F0] hover:bg-[#2A3F34] transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-[#586B60] leading-relaxed">
+                Rooted was designed to bring peace, intentionality, and rhythm to daily life. Whether you have ideas for new features, found a friction point, or simply want to say hello:
+              </p>
+
+              <div className="p-4 rounded-2xl bg-white border border-[#EAE5D8] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-[#1A241E]">Direct Contact</p>
+                    <p className="text-xs text-[#586B60] truncate">samamakarim092@gmail.com</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText("samamakarim092@gmail.com");
+                        alert("Email address copied to clipboard!");
+                      } catch {}
+                    }}
+                    className="px-3 py-1.5 rounded-xl bg-[#FAF8F2] border border-[#EAE5D8] text-xs font-semibold text-[#1E3127] hover:bg-[#F2ECE1] transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-[#7C9A86]" />
+                    <span>Copy</span>
+                  </button>
+                </div>
+
+                <div className="pt-2 border-t border-[#EAE5D8] flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-[#1A241E]">Project Repository</p>
+                    <p className="text-xs text-[#586B60]">GitHub · The Rooted Project</p>
+                  </div>
+                  <a
+                    href="https://github.com/SamamaKarim092/the-rooted-project"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 rounded-xl bg-[#1E3127] text-white text-xs font-semibold hover:bg-[#2A3F34] transition-colors flex items-center gap-1.5"
+                  >
+                    <span>View GitHub</span>
+                    <ExternalLink className="w-3 h-3 text-[#D4A373]" />
+                  </a>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setIsFeedbackModalOpen(false)}
+                  className="px-5 py-2.5 rounded-xl bg-[#FAF8F2] border border-[#EAE5D8] text-[#1A241E] text-xs font-semibold hover:bg-[#F2ECE1] transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Bottom Spacer */}
