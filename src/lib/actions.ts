@@ -886,6 +886,72 @@ export async function setActiveGoal(goalId: string) {
   return updated;
 }
 
+export async function updateGoal(
+  goalId: string,
+  data: {
+    title?: string;
+    description?: string | null;
+    category?: string;
+    targetDate?: string | null;
+    status?: string;
+  }
+) {
+  const userId = await getEffectiveUserId();
+  const existing = await prisma.goal.findFirst({ where: { id: goalId, userId } });
+  if (!existing) return null;
+
+  const updated = await prisma.goal.update({
+    where: { id: goalId },
+    data: {
+      ...(data.title !== undefined ? { title: data.title.trim() } : {}),
+      ...(data.description !== undefined ? { description: data.description?.trim() || null } : {}),
+      ...(data.category !== undefined ? { category: data.category } : {}),
+      ...(data.targetDate !== undefined
+        ? { targetDate: data.targetDate ? new Date(data.targetDate) : null }
+        : {}),
+      ...(data.status !== undefined ? { status: data.status } : {}),
+    },
+    include: {
+      milestones: { orderBy: { order: "asc" } },
+      habits: true,
+      tasks: true,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return updated;
+}
+
+export async function updateMilestone(
+  milestoneId: string,
+  data: {
+    title?: string;
+    stage?: string;
+    order?: number;
+  }
+) {
+  const userId = await getEffectiveUserId();
+  const milestone = await prisma.milestone.findUnique({
+    where: { id: milestoneId },
+    include: { goal: true },
+  });
+  if (!milestone || milestone.goal.userId !== userId) return null;
+
+  const updated = await prisma.milestone.update({
+    where: { id: milestoneId },
+    data: {
+      ...(data.title !== undefined ? { title: data.title.trim() } : {}),
+      ...(data.stage !== undefined ? { stage: data.stage } : {}),
+      ...(data.order !== undefined ? { order: data.order } : {}),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/milestones");
+  return updated;
+}
+
 // ==========================================
 // 🌙 SLEEP TRACKING SERVER ACTIONS
 // ==========================================
@@ -1084,4 +1150,84 @@ export async function togglePinNote(id: string) {
 
   revalidatePath("/notes");
   return updated;
+}
+
+// ==========================================
+// 🛡️ DATA EXPORT & ACCOUNT PURGE ACTIONS
+// ==========================================
+
+export async function exportUserData() {
+  const userId = await getEffectiveUserId();
+
+  const [goals, habits, tasks, sleepLogs, sleepSetting, notes] = await Promise.all([
+    prisma.goal.findMany({
+      where: { userId },
+      include: { milestones: { orderBy: { order: "asc" } } },
+    }),
+    prisma.habit.findMany({
+      where: { userId },
+      include: { logs: { orderBy: { date: "desc" } } },
+    }),
+    prisma.task.findMany({
+      where: { userId },
+      include: { goal: true, milestone: true },
+      orderBy: { order: "asc" },
+    }),
+    prisma.sleepLog.findMany({
+      where: { userId },
+      orderBy: { date: "desc" },
+    }),
+    prisma.sleepSetting.findUnique({
+      where: { userId },
+    }),
+    prisma.note.findMany({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+    }),
+  ]);
+
+  return {
+    exportedAt: new Date().toISOString(),
+    version: "1.0",
+    userId,
+    data: {
+      goals,
+      habits,
+      tasks,
+      sleepLogs,
+      sleepSetting: sleepSetting || { targetHours: 8.0 },
+      notes,
+    },
+  };
+}
+
+export async function clearAllUserData() {
+  const userId = await getEffectiveUserId();
+
+  await prisma.$transaction([
+    prisma.task.deleteMany({ where: { userId } }),
+    prisma.habitLog.deleteMany({ where: { habit: { userId } } }),
+    prisma.habit.deleteMany({ where: { userId } }),
+    prisma.milestone.deleteMany({ where: { goal: { userId } } }),
+    prisma.goal.deleteMany({ where: { userId } }),
+    prisma.sleepLog.deleteMany({ where: { userId } }),
+    prisma.note.deleteMany({ where: { userId } }),
+  ]);
+
+  await prisma.sleepSetting.upsert({
+    where: { userId },
+    create: { userId, targetHours: 8.0 },
+    update: { targetHours: 8.0 },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/tasks");
+  revalidatePath("/habits");
+  revalidatePath("/seasons");
+  revalidatePath("/milestones");
+  revalidatePath("/growth");
+  revalidatePath("/notes");
+  revalidatePath("/settings");
+
+  return { success: true };
 }
