@@ -28,11 +28,16 @@ export const metadata: Metadata = {
   description: "A unified system linking daily intentions, habit streaks, calendar history, and long-term milestones.",
 };
 
-export default function RootLayout({
+import { auth } from "@clerk/nextjs/server";
+
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const { userId } = await auth();
+  const isSignedIn = Boolean(userId);
+
   return (
     <ClerkProvider
       appearance={{
@@ -47,7 +52,7 @@ export default function RootLayout({
     >
       <html lang="en" className={`${fraunces.variable} ${plusJakarta.variable}`}>
         <body className="min-h-screen bg-[#F7F4EB] text-[#1A241E] antialiased selection:bg-[#7C9A86]/20 selection:text-[#1E3127]">
-          <AppShell>{children}</AppShell>
+          <AppShell initialSignedIn={isSignedIn}>{children}</AppShell>
         </body>
       </html>
     </ClerkProvider>
