@@ -202,8 +202,10 @@ Goal roadmapping and progressive milestone tracking:
 - **In-Card Milestone Management**:
   - Dedicated **`+ Add Milestone`** button inside every roadmap card to append new steps at any point.
   - Checkbox toggle with live progress calculation.
+  - **Edit Milestone Step**: Dedicated `Pencil` icon on each step to update title and botanical growth stage (`Seed`, `Sprout`, `Milestone`).
   - Individual milestone deletion (`X` icon on hover).
 - **Life Roadmap Controls**:
+  - **Edit Life Goal**: 1-click `Pencil` action on the roadmap card opening an editorial modal to update Title, Vision Description, Category, and Target Completion Date.
   - **Primary Dashboard Vision**: 1-click **Set as Dashboard Focus** to determine which life goal is highlighted on the Home Dashboard's `LongTermVisionCard`.
   - Roadmap deletion (`Trash2`) with cascading milestone safety.
 - **Relational Alignment**: Direct association with daily habits and tasks linked to that goal.
@@ -217,6 +219,7 @@ A dynamic, data-driven personal analytics engine matching **`design_concept_8_gr
   - `Current Month` (e.g. `September 2026`): 1st of current month to today.
   - `Previous Month` (e.g. `August 2026`): Full previous calendar month.
   - `All Time`: Rolling 90 days.
+  - `Custom Range`: Flexible start and end date picker to audit custom project sprints or historical seasons.
   - Dynamically recalculates all metrics, completion rates, streaks, and charts upon tab selection.
 - **Row 1: The Triad Scorecard (3 Clean Summary Cards)**:
   1. **Task Execution**:
@@ -241,3 +244,20 @@ A dynamic, data-driven personal analytics engine matching **`design_concept_8_gr
   - Deep forest green (`#1E3127`) full-width banner.
   - **Day-of-Week Rhythm**: 7 vertical rounded bars (`Mon, Tue, Wed, Thu, Fri, Sat, Sun`) with heights proportional to daily execution consistency, visually highlighting weekday strengths vs weekend drops.
   - **Rest & Productivity Link**: Translucent pill container (`#24372D`) with info icon showing computed correlation between 8h+ sleep and daytime task completion rate (e.g., *"Rest Correlation: 26% higher task completion following 8h+ sleep"*).
+
+---
+
+### 7. Settings, Data Privacy & AI Connectors (`/settings`)
+Personal preferences, data sovereignty, and AI assistants:
+- **1-Click JSON Data Export**:
+  - `exportUserData()` packages all user tasks, habits, daily logs, milestones, sleep records, settings, and field notes into a timestamped JSON backup file (`rooted-sanctuary-backup-YYYY-MM-DD.json`).
+- **Permanent Sanctuary Reset**:
+  - High-security confirmation modal requiring the user to type `RESET` to clear all personal data across the database with atomic transaction safety.
+- **The Rooted Harmony Formula Modal**:
+  - Transparent breakdown of the 0–100% daily harmony score: 40% Rituals (Habits) + 40% Intentions (Tasks) + 20% Rest Sanctuary (Sleep) + Days Rooted streak nutrition.
+- **Support & Community Modal**:
+  - Direct contact email with 1-click clipboard copy and direct GitHub repository links.
+- **Browser Reminders & Permissions**:
+  - Morning Sleep Check-in and Daily Task Reminder toggles integrated with `localStorage` and browser `Notification.requestPermission()`.
+- **AI Assistant Connectors (Remote MCP)**:
+  - Open Model Context Protocol integration supporting Google Gemini (Spark), Claude, Grok, and ChatGPT.
