@@ -17,7 +17,7 @@ export function LandingView({ user }: LandingViewProps) {
   return (
     <div
       ref={containerRef}
-      className="fixed inset-0 z-50 min-h-screen w-full overflow-y-auto overflow-x-hidden bg-[#FAF7F0] text-[#1A241E] selection:bg-[#7C9A86]/30 selection:text-[#1E3127]"
+      className="relative min-h-screen w-full overflow-x-hidden bg-[#FAF7F0] text-[#1A241E] selection:bg-[#7C9A86]/30 selection:text-[#1E3127]"
     >
       {/* ============================================================= */}
       {/* 1. CINEMATIC VIDEO HERO (Preserved & Enhanced)                */}
