@@ -52,7 +52,7 @@ interface GrowthClientProps {
   today: string;
 }
 
-type PeriodHorizon = "THIS_WEEK" | "CURRENT_MONTH" | "PREV_MONTH" | "ALL_TIME";
+type PeriodHorizon = "THIS_WEEK" | "CURRENT_MONTH" | "PREV_MONTH" | "ALL_TIME" | "CUSTOM";
 
 export function GrowthClient({
   habits,
@@ -68,6 +68,14 @@ export function GrowthClient({
   const currentYear = parseInt(yearStr, 10);
   const currentMonth = parseInt(monthStr, 10);
   const currentDay = parseInt(dayStr, 10);
+
+  // Custom range date pickers state (default to rolling 14 days)
+  const [customStartDate, setCustomStartDate] = useState(() => {
+    const d = new Date(currentYear, currentMonth - 1, currentDay);
+    d.setDate(d.getDate() - 14);
+    return d.toISOString().split("T")[0];
+  });
+  const [customEndDate, setCustomEndDate] = useState(today);
 
   // Month names for pill switcher
   const currentMonthLabel = useMemo(() => {
@@ -107,6 +115,11 @@ export function GrowthClient({
         startDate: `${prevYear}-${prevMonth}-01`,
         endDate: `${prevYear}-${prevMonth}-${String(lastDayOfPrevMonth).padStart(2, "0")}`,
       };
+    } else if (selectedHorizon === "CUSTOM") {
+      return {
+        startDate: customStartDate || today,
+        endDate: customEndDate || today,
+      };
     } else {
       // ALL_TIME: Rolling 90 days
       const d = new Date(currentYear, currentMonth - 1, currentDay);
@@ -116,7 +129,7 @@ export function GrowthClient({
         endDate: today,
       };
     }
-  }, [selectedHorizon, today, currentYear, currentMonth, currentDay, yearStr]);
+  }, [selectedHorizon, today, currentYear, currentMonth, currentDay, yearStr, customStartDate, customEndDate]);
 
   // Filter tasks belonging to the period
   const periodTasks = useMemo(() => {
@@ -490,8 +503,55 @@ export function GrowthClient({
           >
             All Time
           </button>
+          <button
+            onClick={() => setSelectedHorizon("CUSTOM")}
+            className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+              selectedHorizon === "CUSTOM"
+                ? "bg-[#1E3127] text-[#FAF7F0] shadow-xs"
+                : "text-[#586B60] hover:text-[#1A241E] hover:bg-[#FAF8F2]"
+            }`}
+          >
+            Custom Range
+          </button>
         </div>
       </div>
+
+      {/* Custom Date Range Picker Bar */}
+      {selectedHorizon === "CUSTOM" && (
+        <div className="p-4 rounded-2xl bg-[#FFFFFF] border border-[#EAE5D8] flex flex-wrap items-center justify-between gap-4 animate-fade-rise shadow-2xs">
+          <div className="flex items-center gap-2 text-xs text-[#586B60]">
+            <Calendar className="w-4 h-4 text-[#7C9A86]" />
+            <span className="font-semibold text-[#1A241E]">Select Custom Horizon:</span>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-[#586B60]">From:</label>
+              <input
+                type="date"
+                value={customStartDate}
+                max={customEndDate || today}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-[#FAF8F2] border border-[#EAE5D8] text-xs font-semibold text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+              />
+            </div>
+
+            <span className="text-[#8E9E94] text-xs">→</span>
+
+            <div className="flex items-center gap-2">
+              <label className="text-xs font-medium text-[#586B60]">To:</label>
+              <input
+                type="date"
+                value={customEndDate}
+                min={customStartDate}
+                max={today}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                className="px-3 py-1.5 rounded-xl bg-[#FAF8F2] border border-[#EAE5D8] text-xs font-semibold text-[#1A241E] focus:outline-hidden focus:ring-2 focus:ring-[#7C9A86]"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────── */}
       {/* B. Row 1: The Triad Scorecard (3 Equal Clean Cards)        */}
