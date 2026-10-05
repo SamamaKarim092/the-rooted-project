@@ -1,7 +1,7 @@
 import { getDashboardData } from "@/lib/actions";
 import { HeaderCapsules } from "@/components/layout/HeaderCapsules";
 import { DashboardMainView } from "@/components/dashboard/DashboardMainView";
-import { currentUser } from "@clerk/nextjs/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import { LandingView } from "@/components/landing/LandingView";
 
 export const revalidate = 0; // Fresh dynamic data on every request
@@ -11,13 +11,19 @@ export default async function Page({
 }: {
   searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const user = await currentUser().catch(() => null);
+  const { userId } = await auth();
   const resolvedParams = searchParams ? await searchParams : {};
   const forceLanding = resolvedParams.landing === "true";
 
   // First-time visitor (unauthenticated) or explicit landing preview:
-  if (!user || forceLanding) {
-    return <LandingView user={user} />;
+  // Immediate zero-latency return without blocking on remote currentUser API call
+  if (!userId || forceLanding) {
+    return <LandingView user={null} />;
+  }
+
+  const user = await currentUser().catch(() => null);
+  if (!user) {
+    return <LandingView user={null} />;
   }
 
   // Authenticated user: load personal sanctuary dashboard data
