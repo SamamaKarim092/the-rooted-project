@@ -5,9 +5,25 @@ import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  initialSignedIn = false,
+}: {
+  children: React.ReactNode;
+  initialSignedIn?: boolean;
+}) {
   const pathname = usePathname();
   const isAuthPage = pathname?.startsWith("/sign-in") || pathname?.startsWith("/sign-up");
+
+  // Client landing query preview check (e.g. /?landing=true)
+  const [isLandingPreview, setIsLandingPreview] = useState(false);
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("landing=true")) {
+      setIsLandingPreview(true);
+    } else {
+      setIsLandingPreview(false);
+    }
+  }, [pathname]);
 
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -28,7 +44,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
   }, [sidebarOpen]);
 
-  if (isAuthPage) {
+  // When on the root "/" route and unauthenticated (or previewing landing),
+  // render cleanly as a standalone page with zero sidebar and zero mobile top bar
+  const isLandingOnRoot = pathname === "/" && (!initialSignedIn || isLandingPreview);
+  const isStandalonePage = isAuthPage || isLandingOnRoot;
+
+  if (isStandalonePage) {
     return <div className="min-h-screen w-full">{children}</div>;
   }
 
