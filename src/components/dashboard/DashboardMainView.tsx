@@ -33,6 +33,9 @@ interface DashboardMainViewProps {
   };
 }
 
+// In-memory guard to prevent repeated prompts in the same session
+let sessionRetrospectiveDismissed = false;
+
 export function DashboardMainView({ data }: DashboardMainViewProps) {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewMode, setReviewMode] = useState<"WEEKLY" | "MONTHLY">("WEEKLY");
@@ -54,11 +57,31 @@ export function DashboardMainView({ data }: DashboardMainViewProps) {
         return; // Prioritize morning sleep check-in
       }
 
+      // Guard 1: In-memory session dismissal
+      if (sessionRetrospectiveDismissed) {
+        return;
+      }
+
+      // Guard 2: Session storage dismissal
+      try {
+        if (sessionStorage.getItem("rooted_retrospective_dismissed") === "true") {
+          return;
+        }
+      } catch {}
+
       // 2. Periodic Review Detection (if sleep already settled)
       const currentWeekKey = getWeekKey(data.today);
       const currentMonthKey = data.today.slice(0, 7);
       const lastReviewedWeek = localStorage.getItem("rooted_last_reviewed_week");
       const lastReviewedMonth = localStorage.getItem("rooted_last_reviewed_month");
+      const lastReviewedDate = localStorage.getItem("rooted_last_reviewed_date");
+      const clientToday = new Date().toISOString().split("T")[0];
+      const lastReviewedClientDate = localStorage.getItem("rooted_last_reviewed_date_client");
+
+      // Guard 3: If reviewed or dismissed today, never auto-prompt again today
+      if (lastReviewedDate === data.today || lastReviewedClientDate === clientToday) {
+        return;
+      }
 
       // Check if entering a new month (e.g. 1st - 5th of month)
       const dayOfMonth = parseInt(data.today.split("-")[2], 10);
@@ -132,7 +155,22 @@ export function DashboardMainView({ data }: DashboardMainViewProps) {
       {/* Periodic Weekly & Monthly Retrospective Dialog */}
       <PeriodicReviewModal
         isOpen={showReviewModal}
-        onClose={() => setShowReviewModal(false)}
+        onClose={() => {
+          setShowReviewModal(false);
+          sessionRetrospectiveDismissed = true;
+          try {
+            const currentWeekKey = getWeekKey(data.today);
+            const currentMonthKey = data.today.slice(0, 7);
+            const clientToday = new Date().toISOString().split("T")[0];
+            localStorage.setItem("rooted_last_reviewed_week", currentWeekKey);
+            localStorage.setItem("rooted_last_reviewed_month", currentMonthKey);
+            localStorage.setItem("rooted_last_reviewed_date", data.today);
+            localStorage.setItem("rooted_last_reviewed_date_client", clientToday);
+            try {
+              sessionStorage.setItem("rooted_retrospective_dismissed", "true");
+            } catch {}
+          } catch {}
+        }}
         today={data.today}
         allTasks={data.allTasks}
         habits={data.habits}
