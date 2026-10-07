@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { 
   Sparkles, 
   CheckCircle2, 
@@ -72,6 +72,13 @@ export function PeriodicReviewModal({
 }: PeriodicReviewModalProps) {
   const [mode, setMode] = useState<"WEEKLY" | "MONTHLY">(initialMode);
   const [showTaskList, setShowTaskList] = useState(false);
+
+  // Sync mode with initialMode prop when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setMode(initialMode);
+    }
+  }, [isOpen, initialMode]);
 
   // 1. PREVIOUS WEEK METRICS
   const prevWeekRange = useMemo(() => getPreviousWeekRange(today), [today]);
@@ -201,22 +208,45 @@ export function PeriodicReviewModal({
 
   const handleDismissAndSave = () => {
     try {
-      if (mode === "WEEKLY") {
-        const currentWeekKey = getWeekKey(today);
-        localStorage.setItem("rooted_last_reviewed_week", currentWeekKey);
-      } else {
-        localStorage.setItem("rooted_last_reviewed_month", currentMonthKey);
-      }
+      const currentWeekKey = getWeekKey(today);
+      const currentMonthKey = today.slice(0, 7);
+      const clientToday = new Date().toISOString().split("T")[0];
+
+      // Mark both weekly and monthly cycles as reviewed, and mark today's date so it never loops
+      localStorage.setItem("rooted_last_reviewed_week", currentWeekKey);
+      localStorage.setItem("rooted_last_reviewed_month", currentMonthKey);
+      localStorage.setItem("rooted_last_reviewed_date", today);
+      localStorage.setItem("rooted_last_reviewed_date_client", clientToday);
+      try {
+        sessionStorage.setItem("rooted_retrospective_dismissed", "true");
+      } catch {}
     } catch {
       // ignore
     }
     onClose();
   };
 
+  // Close when pressing Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        handleDismissAndSave();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, today]);
+
   const handleResetTriggersForTesting = () => {
     try {
       localStorage.removeItem("rooted_last_reviewed_week");
       localStorage.removeItem("rooted_last_reviewed_month");
+      localStorage.removeItem("rooted_last_reviewed_date");
+      localStorage.removeItem("rooted_last_reviewed_date_client");
+      try {
+        sessionStorage.removeItem("rooted_retrospective_dismissed");
+      } catch {}
       alert("Retrospective triggers reset! Next page reload will automatically prompt the retrospective dialog.");
     } catch {
       // ignore
@@ -224,7 +254,14 @@ export function PeriodicReviewModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+    <div 
+      className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleDismissAndSave();
+        }
+      }}
+    >
       <div className="relative bg-[#FAF7F0] text-[#1A241E] rounded-3xl p-6 md:p-8 max-w-2xl w-full border border-[#EAE5D8] shadow-2xl my-8">
         
         {/* Close Button */}
@@ -514,14 +551,18 @@ export function PeriodicReviewModal({
 
         {/* Bottom Action Footer */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-[#EAE5D8]">
-          <button
-            type="button"
-            onClick={handleResetTriggersForTesting}
-            title="Clears localStorage flags so the retrospective will trigger again on next reload"
-            className="text-[11px] text-[#8E9E94] hover:text-[#C87452] underline underline-offset-2 transition-colors cursor-pointer"
-          >
-            Reset Triggers (Test Auto-Popup)
-          </button>
+          {process.env.NODE_ENV === "development" ? (
+            <button
+              type="button"
+              onClick={handleResetTriggersForTesting}
+              title="Clears localStorage flags so the retrospective will trigger again on next reload"
+              className="text-[11px] text-[#8E9E94] hover:text-[#C87452] underline underline-offset-2 transition-colors cursor-pointer"
+            >
+              Reset Triggers (Dev Only)
+            </button>
+          ) : (
+            <div />
+          )}
 
           <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
             <button
