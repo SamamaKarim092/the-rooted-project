@@ -26,6 +26,19 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: "The Rooted Project — Mindful Productivity & Habit Growth",
   description: "A unified system linking daily intentions, habit streaks, calendar history, and long-term milestones.",
+  icons: {
+    icon: [
+      { url: "/brand/cropped_circle.png" },
+      { url: "/icon.png" },
+    ],
+    shortcut: "/brand/cropped_circle.png",
+    apple: "/brand/cropped_circle.png",
+  },
+  openGraph: {
+    title: "Rooted — Mindful Life Architecture & Habit Sanctuary",
+    description: "A calm, grounded personal productivity sanctuary connecting daily intentions to lifetime milestones with native Remote MCP support.",
+    images: [{ url: "/brand/cropped_circle.png", width: 512, height: 512, alt: "Rooted Botanical Emblem" }],
+  },
 };
 
 import { auth } from "@clerk/nextjs/server";
