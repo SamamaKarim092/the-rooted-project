@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { User } from "@clerk/nextjs/server";
 import { ArrowUpRight, ArrowRight, Quote, Check, Sparkles } from "lucide-react";
 import { useLandingAnimations } from "./useLandingAnimations";
+import { RootedLogo, RootedWordmark } from "@/components/brand/RootedBrand";
 
 interface LandingViewProps {
   user?: User | null;
@@ -17,7 +18,7 @@ export function LandingView({ user }: LandingViewProps) {
   return (
     <div
       ref={containerRef}
-      className="relative min-h-screen w-full overflow-x-hidden bg-[#FAF7F0] text-[#1A241E] selection:bg-[#7C9A86]/30 selection:text-[#1E3127]"
+      className="relative min-h-screen w-full flex flex-col justify-between overflow-x-hidden bg-[#FAF7F0] text-[#1A241E] selection:bg-[#7C9A86]/30 selection:text-[#1E3127]"
     >
       {/* ============================================================= */}
       {/* 1. CINEMATIC VIDEO HERO (Preserved & Enhanced)                */}
@@ -48,14 +49,19 @@ export function LandingView({ user }: LandingViewProps) {
         {/* Glassmorphic Navigation Bar */}
         <div className="relative z-10 w-full">
           <nav className="flex items-center justify-between px-6 sm:px-10 py-6 max-w-7xl mx-auto w-full">
-            {/* Logo: Rooted® with Instrument Serif */}
+            {/* Logo: Rooted Plant Vector directly before Rooted Wordmark in pure white */}
             <Link
               href="/"
-              className="text-3xl tracking-tight text-white flex items-baseline gap-0.5 hover:opacity-90 transition-opacity"
-              style={{ fontFamily: "'Instrument Serif', serif" }}
+              className="flex items-center gap-2.5 hover:opacity-90 transition-opacity group select-none"
             >
-              <span>Rooted</span>
-              <sup className="text-xs -top-2 font-sans font-light">®</sup>
+              <RootedLogo
+                variant="white"
+                className="h-10 sm:h-11 w-auto shrink-0 group-hover:scale-105 transition-transform duration-200"
+              />
+              <RootedWordmark
+                variant="white"
+                className="h-5 sm:h-6 w-auto shrink-0"
+              />
             </Link>
 
             {/* In-page Anchor Links */}
@@ -130,13 +136,8 @@ export function LandingView({ user }: LandingViewProps) {
         </section>
 
         {/* Giant Cropped Wordmark */}
-        <div className="relative w-full z-[5] pointer-events-none overflow-hidden pb-4" data-parallax="0.2">
-          <p
-            className="text-[18vw] leading-none text-center text-white/5 whitespace-nowrap select-none font-light tracking-tighter"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
-          >
-            ROOTED
-          </p>
+        <div className="relative w-full z-[5] pointer-events-none overflow-hidden pb-4 flex justify-center" data-parallax="0.2">
+          <RootedWordmark variant="white" className="w-[85vw] max-w-6xl h-auto opacity-5 select-none" />
         </div>
       </header>
 
@@ -677,34 +678,20 @@ export function LandingView({ user }: LandingViewProps) {
             </div>
           </div>
         </div>
+      </section>
 
-        {/* ============================================================= */}
-        {/* 7. EDITORIAL FOOTER                                           */}
-        {/* ============================================================= */}
-        <footer className="border-t border-[#EAE5D8] max-w-7xl mx-auto px-6 sm:px-10 pt-12">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 pb-8">
-            <div className="flex items-center gap-3">
-              {/* Botanical 3x3 Dot Glyphs */}
-              <span className="grid grid-cols-3 gap-[3px]">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#7C9A86]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1E3127]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D98A6C]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1E3127]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#7C9A86]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1E3127]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#D98A6C]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#1E3127]" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#7C9A86]" />
-              </span>
-              <span
-                className="text-xl font-normal text-[#1A241E]"
-                style={{ fontFamily: "'Instrument Serif', serif" }}
-              >
-                Rooted<sup className="text-xs font-sans font-light">®</sup>
-              </span>
+      {/* ============================================================= */}
+      {/* 7. EDITORIAL FOOTER (Pinned to Bottom)                        */}
+      {/* ============================================================= */}
+      <footer className="w-full bg-[#FAF7F0] border-t border-[#EAE5D8] mt-auto">
+        <div className="max-w-7xl mx-auto px-6 sm:px-10 py-8 sm:py-10">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
+            <div className="flex items-center gap-2.5 select-none">
+              <RootedLogo variant="dark" className="h-9 w-auto shrink-0" />
+              <RootedWordmark variant="dark" className="h-5 w-auto shrink-0" />
             </div>
 
-            <div className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-[#586B60]">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-[#586B60]">
               <a href="#top" className="hover:text-[#1A241E] transition-colors">Top</a>
               <a href="#practice" className="hover:text-[#1A241E] transition-colors">Practice</a>
               <a href="#method" className="hover:text-[#1A241E] transition-colors">Method</a>
@@ -718,8 +705,8 @@ export function LandingView({ user }: LandingViewProps) {
               © {new Date().getFullYear()} Rooted. Mindful life architecture.
             </p>
           </div>
-        </footer>
-      </section>
+        </div>
+      </footer>
     </div>
   );
 }
