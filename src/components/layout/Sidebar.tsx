@@ -15,6 +15,7 @@ import {
   LogOut,
 } from "lucide-react";
 import { useAuth, UserButton } from "@clerk/nextjs";
+import { RootedLogo, RootedWordmark } from "@/components/brand/RootedBrand";
 
 interface NavItem {
   name: string;
@@ -39,11 +40,16 @@ export function Sidebar() {
   return (
     <aside className="w-68 sm:w-[17.5rem] h-full flex flex-col justify-between overflow-y-auto overflow-x-hidden border-r border-[#EAE5D8]/80 bg-[#F7F4EB] px-5 py-6 sm:px-6 sm:py-7 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
       <div>
-        {/* Brand Logo */}
-        <Link href="/" className="inline-block mb-6 sm:mb-8">
-          <h1 className="font-serif text-3xl sm:text-[34px] font-bold tracking-tight text-[#1A241E] hover:opacity-90 transition-opacity">
-            Rooted
-          </h1>
+        {/* Brand Logo & Wordmark Vectors */}
+        <Link href="/" className="flex items-center gap-2.5 mb-6 sm:mb-8 group select-none">
+          <RootedLogo
+            variant="dark"
+            className="h-10 w-auto shrink-0 group-hover:scale-105 transition-transform duration-200"
+          />
+          <RootedWordmark
+            variant="dark"
+            className="h-6 w-auto shrink-0 group-hover:opacity-90 transition-opacity"
+          />
         </Link>
 
         {/* Navigation Items */}
