@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Menu, X } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { RootedLogo, RootedWordmark } from "@/components/brand/RootedBrand";
 
 export function AppShell({
   children,
@@ -94,9 +95,10 @@ export function AppShell({
           >
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="font-serif text-xl font-bold tracking-tight text-[#1A241E]">
-            Rooted
-          </h1>
+          <div className="flex items-center gap-2 select-none">
+            <RootedLogo variant="dark" className="h-8 w-auto shrink-0" />
+            <RootedWordmark variant="dark" className="h-5 w-auto shrink-0" />
+          </div>
         </div>
 
         {/* Page Content — Fluid, Responsive, Centered */}
