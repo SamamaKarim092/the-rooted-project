@@ -1,4 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
+import { RootedLogo, RootedWordmark } from "@/components/brand/RootedBrand";
 
 export default async function RootLoading() {
   const { userId } = await auth();
@@ -7,14 +8,11 @@ export default async function RootLoading() {
   if (!userId) {
     return (
       <div className="fixed inset-0 z-50 min-h-screen w-full bg-[#0A1118] flex items-center justify-center select-none">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-[#7C9A86] animate-spin" />
-          <span
-            className="text-white/80 text-3xl tracking-tight animate-pulse"
-            style={{ fontFamily: "'Instrument Serif', serif" }}
-          >
-            Rooted®
-          </span>
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="w-12 h-12 rounded-2xl flex items-center justify-center p-2 border border-white/20 bg-white/10 backdrop-blur-md shadow-lg animate-pulse">
+            <RootedLogo variant="white" className="w-full h-full" />
+          </div>
+          <RootedWordmark variant="white" className="h-6 w-auto opacity-90 animate-pulse" />
         </div>
       </div>
     );
