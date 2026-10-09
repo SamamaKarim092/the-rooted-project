@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 510" width="300" height="510" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <title>Rooted plant</title>
+  <defs>
+    <linearGradient id="rootFade" gradientUnits="userSpaceOnUse" x1="0" y1="295" x2="0" y2="505">
+      <stop offset="0" stop-color="#2c6a45"/>
+      <stop offset="0.35" stop-color="#6d9a78"/>
+      <stop offset="1" stop-color="#a3c4a6"/>
+    </linearGradient>
+    <g id="leaf">
+      <path d="M0,0 C30,-25 32,-70 0,-100 C-32,-70 -30,-25 0,0 Z" fill="none" stroke="#1a4a2e" stroke-width="4.2" vector-effect="non-scaling-stroke"/>
+      <path d="M0,0 C2,-30 1,-60 0,-88" stroke="#1a4a2e" stroke-width="2.8" vector-effect="non-scaling-stroke"/>
+    </g>
+  </defs>
+
+  <!-- Roots -->
+  <g stroke="url(#rootFade)" stroke-width="3">
+    <path d="M150,300 C150,350 155,400 150,440 C147,470 152,490 150,502"/>
+    <path d="M150,300 C140,322 100,318 70,335 C55,341 40,350 20,360"/>
+    <path d="M150,300 C160,322 200,318 230,335 C245,341 260,350 280,360"/>
+    <path d="M148,312 C130,350 110,370 100,420 C98,440 100,452 95,475"/>
+    <path d="M152,312 C170,350 190,370 200,420 C204,440 200,455 205,475"/>
+    <path d="M140,330 C120,345 95,348 80,382 C72,398 70,412 65,435"/>
+    <path d="M160,330 C180,345 205,348 220,382 C228,398 230,412 235,435"/>
+    <path d="M150,380 C140,400 135,425 128,450"/>
+    <path d="M152,390 C162,410 168,430 172,455"/>
+    <!-- twigs -->
+    <path d="M70,335 C62,325 55,322 46,325"/>
+    <path d="M70,335 C66,346 60,356 52,364"/>
+    <path d="M105,322 C98,335 92,345 86,352"/>
+    <path d="M40,350 C36,342 30,338 24,338"/>
+    <path d="M230,335 C238,325 245,322 254,325"/>
+    <path d="M230,335 C234,346 240,356 248,364"/>
+    <path d="M195,322 C202,335 208,345 214,352"/>
+    <path d="M260,350 C264,342 270,338 276,338"/>
+    <path d="M100,420 C90,418 82,424 76,432"/>
+    <path d="M100,420 C108,432 110,442 108,452"/>
+    <path d="M200,420 C210,418 218,424 224,432"/>
+    <path d="M200,420 C192,432 190,442 192,452"/>
+    <path d="M80,382 C70,380 62,384 56,392"/>
+    <path d="M220,382 C230,380 238,384 244,392"/>
+    <path d="M128,450 C122,456 120,464 120,472"/>
+    <path d="M172,455 C178,461 180,469 180,477"/>
+    <path d="M130,345 C122,358 120,368 118,380"/>
+    <path d="M170,345 C178,358 180,368 182,380"/>
+  </g>
+
+  <!-- Stems -->
+  <g stroke="#1a4a2e" stroke-width="4.2">
+    <path d="M150,300 C148,272 138,256 146,235 C153,215 160,205 168,195" stroke-width="5.5"/>
+    <path d="M146,235 C140,210 150,190 158,165 C162,140 160,125 156,92"/>
+    <path d="M160,215 C175,205 185,200 193,195"/>
+    <path d="M146,235 C135,215 118,205 108,220"/>
+    <path d="M146,205 C125,192 100,182 93,160"/>
+    <path d="M168,195 C175,212 175,222 173,227"/>
+    <path d="M158,150 C145,145 130,155 116,175"/>
+    <path d="M120,176 C100,172 90,172 83,170"/>
+    <path d="M160,140 C168,133 163,128 163,125"/>
+    <path d="M164,152 C180,142 195,134 203,135"/>
+    <path d="M160,175 C165,185 168,190 170,195"/>
+    <path d="M148,262 C138,250 122,250 110,243" stroke-width="5"/>
+  </g>
+
+  <!-- Leaves -->
+  <use href="#leaf" transform="translate(155,92) rotate(3) scale(0.85)"/>
+  <use href="#leaf" transform="translate(93,160) rotate(-26) scale(0.78)"/>
+  <use href="#leaf" transform="translate(116,175) rotate(8) scale(0.5)"/>
+  <use href="#leaf" transform="translate(108,220) rotate(-80) scale(0.72)"/>
+  <use href="#leaf" transform="translate(83,170) rotate(-72) scale(0.5)"/>
+  <use href="#leaf" transform="translate(163,125) rotate(43) scale(0.68)"/>
+  <use href="#leaf" transform="translate(203,135) rotate(54) scale(0.4)"/>
+  <use href="#leaf" transform="translate(193,195) rotate(48) scale(0.77)"/>
+  <use href="#leaf" transform="translate(170,195) rotate(5) scale(0.35)"/>
+  <use href="#leaf" transform="translate(173,227) rotate(78) scale(0.58)"/>
+</svg>
