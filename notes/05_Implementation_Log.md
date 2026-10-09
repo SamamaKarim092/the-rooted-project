@@ -1104,3 +1104,186 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
   - TypeScript check (`npx tsc --noEmit`) verified with 0 errors.
   - Production build (`npm run build`) passed with 0 errors across all routes.
 
+---
+
+### Step 44: Final Polish & Full Feature Loop Completion
+- **User Directive**:
+  - Resolve all remaining gaps, incomplete stubs, and missing functionality to achieve 100% completion across the entire system.
+- **Architectural Enhancements Implemented**:
+  1. **Goal & Milestone Life Roadmap Editing**:
+     - `src/lib/actions.ts`: Added `updateGoal` and `updateMilestone` server actions scoped to `userId` with multi-page cache revalidation (`/`, `/milestones`).
+     - `src/app/milestones/MilestonesClient.tsx`:
+       - Added **Edit Life Goal** button (`Pencil`) on all roadmap cards, opening a dedicated modal allowing in-place edits to Title, Vision Description, Category, and Target Completion Date.
+       - Added **Edit Milestone Step** button (`Pencil`) on all milestone cards, opening an editorial modal to update step Title and botanical growth stage (`Seed 🌱`, `Sprout 🌿`, `Milestone 🌳`).
+       - Implemented instant optimistic UI state updates (`setGoals`).
+  2. **Sanctuary Data Privacy & Account Actions**:
+     - `src/lib/actions.ts`:
+       - `exportUserData()`: Compiles all user goals, milestones, habits, habit completion logs, tasks, sleep logs, sleep settings, and field notes into a structured JSON payload with timestamp and schema versioning.
+       - `clearAllUserData()`: Executes an atomic `prisma.$transaction` deleting all user data across all tables, resetting sleep target to 8.0h, and revalidating all routes.
+     - `src/app/settings/SettingsClient.tsx`:
+       - **1-Click JSON Data Export**: Added client download mechanism triggering immediate browser download of `rooted-sanctuary-backup-YYYY-MM-DD.json`.
+       - **Permanent Sanctuary Reset**: Added high-security confirmation modal with custom input validation requiring the user to type `RESET` before proceeding.
+  3. **The Rooted Harmony Formula Modal**:
+     - `src/app/settings/SettingsClient.tsx`:
+       - Replaced empty stub with an organic editorial modal detailing the balanced equation:
+         - **40% Ritual Growth (Habits)**: Adherence across today and the rolling 7-day window.
+         - **40% Daily Intentions (Tasks)**: Fulfillment velocity strictly within today's conscious horizon.
+         - **20% Rest Sanctuary (Sleep)**: Sleep duration relative to the configured 8.0h baseline target.
+         - **Grounded Streaks Multiplier**: Active streaks fortifying overall daily rhythm stability.
+  4. **Sanctuary Support & Community Modal**:
+     - `src/app/settings/SettingsClient.tsx`: Added supportive modal providing direct contact email with 1-click copy and link to the official GitHub repository.
+  5. **Notification Reminder Persistence & Browser Permission**:
+     - `src/app/settings/SettingsClient.tsx`: Connected the "Morning Sleep Check-in" and "Daily Task Reminder" switches to `localStorage` and integrated standard `Notification.requestPermission()` prompt when enabled.
+  6. **Custom Date Range Analytics**:
+     - `src/app/growth/GrowthClient.tsx`:
+       - Expanded `PeriodHorizon` to support `"CUSTOM"`.
+       - Added an organic date range picker banner allowing users to select arbitrary `From:` and `To:` calendar dates.
+       - Dynamically recalculated all Triad Scorecards, Task Velocity breakdown, Anchor Habits vs Friction Points pattern detection, 7-day rhythm distribution, and rest-productivity correlation.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors across the entire codebase.
+  - Production build and dev server running smoothly.
+
+---
+
+### Step 45: First-Time Visitor Root Flash Elimination
+- **User Directive**:
+  - When opening the deployed application for the first time in the browser, users briefly saw the project dashboard skeleton and sidebar before the landing page appeared.
+  - Eliminate this flash so first-time visitors see a seamless, instant landing page experience with zero dashboard or sidebar leakage.
+- **Root Cause Analysis**:
+  1. `src/app/page.tsx` previously awaited `currentUser()` unconditionally on line 14 before determining if the visitor was authenticated. `currentUser()` executes an external HTTPS API round-trip to Clerk (`api.clerk.com`), causing a 400ms–800ms server delay.
+  2. While `page.tsx` was awaiting Clerk's remote profile fetch, Next.js streaming immediately rendered the root fallback skeleton (`src/app/loading.tsx`), which was hardcoded to `DashboardLoading()` (capsule bar, daily intentions card, today's rituals card).
+  3. `src/components/layout/AppShell.tsx` had no server-level awareness of authentication state on initial load, causing it to persistently mount the `<Sidebar />` and mobile header on `/` while awaiting client hydration.
+  4. `src/components/landing/LandingView.tsx` previously used `fixed inset-0 z-50` to overlay on top of the mounted sidebar after loading.
+- **Architectural Solution Implemented**:
+  1. **Instant Server Auth Gate (`src/app/page.tsx`)**:
+     - Switched to `const { userId } = await auth();`. Because `auth()` inspects the local request cookies rather than making an external API fetch to Clerk, unauthenticated visitors (`!userId`) are routed to `<LandingView user={null} />` in **0ms** on the very first chunk of the HTTP response.
+     - `currentUser()` and `getDashboardData()` are only invoked if `userId` is present.
+  2. **Server-Hydrated AppShell (`src/app/layout.tsx` & `src/components/layout/AppShell.tsx`)**:
+     - `RootLayout` now calls `const { userId } = await auth();` and passes `initialSignedIn={Boolean(userId)}` directly to `<AppShell>`.
+     - `AppShell` evaluates `isLandingOnRoot = pathname === "/" && (!initialSignedIn || isLandingPreview)`. For guests on `/`, `AppShell` immediately returns `<div className="min-h-screen w-full">{children}</div>`, preventing the desktop sidebar and mobile header from mounting in the HTML.
+  3. **Context-Aware Root Loader (`src/app/loading.tsx`)**:
+     - Evaluates `const { userId } = await auth();`. If unauthenticated, it returns a cinematic `#0A1118` dark loader with an emerald spinner and Instrument Serif *Rooted®* wordmark matching the landing page video hero, completely eliminating any exposure to the dashboard skeleton.
+  4. **Natural Viewport Layout (`src/components/landing/LandingView.tsx`)**:
+     - Replaced `fixed inset-0 z-50` with `relative min-h-screen w-full overflow-x-hidden`, allowing natural viewport scroll mechanics and parallax listeners.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - Production build (`npx next build`) passed with exit code 0.
+
+---
+
+### Step 46: Periodic Rhythm Retrospective Loop Resolution
+- **User Directive**:
+  - The "Periodic Rhythm Retrospective" ("Week in Reflection") modal kept popping up repeatedly even after clicking **"Ground Myself & Continue"** multiple times.
+  - Fix the dismissal mechanism permanently so the user is never stuck in a loop.
+- **Root Cause Analysis**:
+  1. `src/components/dashboard/PeriodicReviewModal.tsx` originally used an `if (mode === "WEEKLY") ... else ...` conditional inside `handleDismissAndSave()`.
+  2. In `DashboardMainView.tsx`, the month check `dayOfMonth <= 5 && lastReviewedMonth !== currentMonthKey` triggered opening the modal during the first 5 days of the month.
+  3. However, `PeriodicReviewModal` defaulted to `useState("WEEKLY")` on initial mount and did not synchronize when `initialMode` was changed to `"MONTHLY"`.
+  4. When the user clicked "Ground Myself & Continue", because `mode` was `"WEEKLY"`, only `rooted_last_reviewed_week` was set in `localStorage`. `rooted_last_reviewed_month` was never recorded!
+  5. As a result, the month guard remained satisfied on every render and reload, causing `DashboardMainView` to immediately reopen the modal over and over.
+- **Architectural Solution Implemented**:
+  1. **Prop Synchronization (`PeriodicReviewModal.tsx`)**: Added `useEffect` to synchronize internal `mode` state with `initialMode` whenever the modal opens.
+  2. **Multi-Horizon Simultaneous Persistence (`PeriodicReviewModal.tsx` & `DashboardMainView.tsx`)**:
+     - When clicking **"Ground Myself & Continue"**, the modal now simultaneously records:
+       - `rooted_last_reviewed_week`: Current week identifier.
+       - `rooted_last_reviewed_month`: Current year-month identifier.
+       - `rooted_last_reviewed_date`: Server today date string.
+       - `rooted_last_reviewed_date_client`: Client-side local ISO date string.
+       - `sessionStorage.setItem("rooted_retrospective_dismissed", "true")`: Tab session guard.
+  3. **Multi-Layer Auto-Prompt Guards (`DashboardMainView.tsx`)**:
+     - Added an in-memory session flag (`let sessionRetrospectiveDismissed = true`).
+     - Added `sessionStorage` guard.
+     - Added double-date check (`lastReviewedDate === data.today || lastReviewedClientDate === clientToday`).
+  4. **Enhanced UX Dismissal (`PeriodicReviewModal.tsx`)**:
+     - Added Escape key listener to close cleanly.
+     - Added outer backdrop click-to-dismiss handler.
+     - Restricted the "Reset Triggers (Dev Only)" button to `process.env.NODE_ENV === "development"`, removing it from production views.
+- **Validation**:
+  - `npx tsc --noEmit` verified with 0 errors.
+  - Production build passing.
+
+---
+
+### [Step 14] - Official Brand Logo Integration (Concept 3: Editorial Botanical Monogram 'R')
+- **Design Selection**: Selected Concept 3—an elegant, bespoke editorial serif capital letter "R" intertwined with an organic living botanical leaf vine on a warm linen background (`#FAF7F0`).
+- **Asset Placement**:
+  - `public/brand/logo.jpg`: High-resolution 1024x1024 master brandmark.
+  - `src/app/icon.jpg`: App Router favicon & web app icon.
+  - `src/app/apple-icon.jpg`: Apple Touch home screen icon.
+- **Component & Metadata Integration**:
+  1. **Root Metadata (`src/app/layout.tsx`)**: Configured explicit `icons` (`icon`, `apple`) and `openGraph` card preview with the 1024x1024 brandmark.
+  2. **Navigation Sidebar (`src/components/layout/Sidebar.tsx`)**: Upgraded brand header with a 10x10 rounded capsule featuring the emblem adjacent to the editorial title.
+  3. **Mobile Header (`src/components/layout/AppShell.tsx`)**: Added the brandmark capsule into the mobile header bar.
+  4. **Landing Page (`src/components/landing/LandingView.tsx`)**: Integrated the monogram mark into both the sticky glassmorphic navbar and editorial footer.
+- **Verification**:
+  - `npx tsc --noEmit` verified 0 errors across all routes.
+
+---
+
+### Step 47: Vector SVG Brand Architecture (Plant Emblem & Typography Wordmark)
+- **User Directive**:
+  - Replace the raster picture (`logo.jpg`) with vector SVGs created for the logo (`rooted-plant.svg`) and typography wordmark (`rooted-text.svg`).
+  - Render the logo and typography in pure crisp white across the dark hero section.
+- **Architectural Enhancements Implemented**:
+  1. **SVG Assets Added (`public/brand/`)**:
+     - `public/brand/rooted-plant.svg`: Botanical plant vector with organic roots, stem, and leaves in brand forest green.
+     - `public/brand/rooted-plant-white.svg`: Botanical plant vector in pure white with subtle luminous gradient roots for dark surfaces.
+     - `public/brand/rooted-text.svg`: High-precision vector typography wordmark ("ROOTED") in dark forest green.
+     - `public/brand/rooted-text-white.svg`: High-precision vector typography wordmark ("ROOTED") in pure white.
+  2. **Dedicated Brand Vector Component (`src/components/brand/RootedBrand.tsx`)**:
+     - `RootedLogo`: Renders vector plant emblem in `"white"` or `"dark"` variants with custom dimensions.
+     - `RootedWordmark`: Renders the vector typography wordmark with exact path mathematics in `"white"` or `"dark"`.
+     - `RootedBrand`: Composite component combining emblem and wordmark with responsive scaling.
+  3. **Hero Section Navbar & Wordmark (`src/components/landing/LandingView.tsx`)**:
+     - Replaced raster image and generic HTML text with `RootedLogo variant="white"` enclosed in a glassmorphic container and `RootedWordmark variant="white"`.
+     - Updated giant background parallax wordmark to use the vector `RootedWordmark variant="white"` with subtle opacity.
+     - Updated editorial footer to use `RootedLogo variant="dark"` and `RootedWordmark variant="dark"`.
+  4. **Sidebar & Mobile Top Bar (`src/components/layout/Sidebar.tsx` & `AppShell.tsx`)**:
+     - Replaced raster images with vector `RootedLogo` and `RootedWordmark` for razor-sharp rendering on all display densities.
+  5. **Root Metadata & Loading (`src/app/layout.tsx` & `src/app/loading.tsx`)**:
+     - Configured SVG favicon and apple-touch-icon links.
+     - Updated guest cinematic dark loading screen to render vector white emblem and wordmark.
+- **Verification**:
+  - TypeScript check (`npx tsc --noEmit`) verified 0 errors.
+  - Production build passing.
+
+---
+
+### Step 48: Circular Botanical Favicon Integration (`cropped_circle.png`)
+- **User Directive**:
+  - Use `cropped_circle.png` as the application favicon.
+- **Implementation**:
+  1. **Root Cause Analysis for Persistent Vercel Triangle Favicon**:
+     - `src/app/favicon.ico` was a remnant from `create-next-app` initialization containing the legacy black-and-white Vercel triangle.
+     - Browsers unconditionally request `/favicon.ico` by default and cache it aggressively.
+  2. **Multi-Size ICO & PNG Generation (`scripts/generate-favicons.js`)**:
+     - Converted `public/brand/cropped_circle.png` using `sharp` into a binary ICO container with 16x16, 32x32, and 48x48 layers.
+     - Overwrote `src/app/favicon.ico` with the botanical emblem ICO.
+     - Created `public/favicon.ico` as the direct static edge fallback.
+     - Created 16x16, 32x32, 180x180, 192x192, and 512x512 PNG assets.
+     - Updated `src/app/icon.png` (32x32) and `src/app/apple-icon.png` (180x180).
+  3. **Metadata Configuration (`src/app/layout.tsx`)**:
+     - Configured `metadata.icons` with `icon`, `shortcut`, and `apple` references.
+- **Verification**:
+  - TypeScript compilation (`npx tsc --noEmit`) verified with 0 errors.
+  - Next.js production build (`npx next build`) passed with exit code 0.
+
+---
+
+### Step 49: Editorial Footer Realignment & Bottom Anchoring
+- **User Directive**:
+  - Make the landing page footer rest flush at the very bottom of the document instead of floating high up with awkward blank space underneath.
+- **Root Cause**:
+  - The `<footer>` was previously nested inside `<section id="contact">`, which had an outer `py-20 sm:py-28` (112px bottom padding), and lacked `mt-auto` / document-level anchoring.
+  - The top divider border was constrained to `max-w-7xl` rather than spanning the full browser width.
+- **Implementation (`src/components/landing/LandingView.tsx`)**:
+  1. Converted the root page container to `flex flex-col justify-between`.
+  2. Extracted the `<footer>` from the preceding CTA section, making it an independent, full-width element (`w-full bg-[#FAF7F0] border-t border-[#EAE5D8] mt-auto`).
+  3. Added responsive padding (`py-8 sm:py-10`) so the footer rests cleanly and flush at the bottom edge of the webpage.
+- **Verification**:
+  - Visual verification with `browser_subagent` confirmed the footer sits firmly at the bottom with no trailing blank gaps.
+  - `npx tsc --noEmit` verified with 0 errors.
+
+
+
+
