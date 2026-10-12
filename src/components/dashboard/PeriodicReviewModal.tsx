@@ -178,8 +178,6 @@ export function PeriodicReviewModal({
     return { completedLogs, rate, daysInMonth };
   }, [habits, prevMonthKey]);
 
-  if (!isOpen) return null;
-
   // Category badge styling helper
   const getCategoryBadgeClass = (cat: string) => {
     switch (cat.toLowerCase()) {
@@ -252,6 +250,8 @@ export function PeriodicReviewModal({
       // ignore
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div 
