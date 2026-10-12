@@ -1284,6 +1284,32 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
   - Visual verification with `browser_subagent` confirmed the footer sits firmly at the bottom with no trailing blank gaps.
   - `npx tsc --noEmit` verified with 0 errors.
 
+---
+
+### Step 50: React Hook Order Violation Fix & Root Error Boundary Integration
+- **User Directive**:
+  - Resolve crash occurring when logging into the authenticated dashboard ("This page couldn't load").
+- **Root Cause Analysis (`next-development.log`)**:
+  - Terminal log showed:
+    `React has detected a change in the order of Hooks called by PeriodicReviewModal.`
+    `Uncaught Error: Rendered more hooks than during the previous render.`
+    `at PeriodicReviewModal (src/components/dashboard/PeriodicReviewModal.tsx:230:12)`
+  - `PeriodicReviewModal.tsx` had an early conditional exit: `if (!isOpen) return null;` on line 181.
+  - However, an Escape key listener hook (`useEffect(...)`) was placed on line 230 *after* the early return.
+  - When `isOpen` was `false`, 16 hooks executed. When `isOpen` became `true`, 17 hooks executed.
+  - This fatal React exception unmounted the component tree, triggering the Vercel error screen ("This page couldn't load").
+- **Architectural Fixes Implemented**:
+  1. **Strict Hook Order Compliance (`src/components/dashboard/PeriodicReviewModal.tsx`)**:
+     - Moved `if (!isOpen) return null;` to the very bottom immediately before the JSX return statement.
+     - All 17 hooks now execute unconditionally on every render regardless of `isOpen` state, fully adhering to React's Rules of Hooks.
+  2. **Hydration Protection (`src/app/layout.tsx`)**:
+     - Added `suppressHydrationWarning` to `<html>` and `<body>` to prevent third-party browser extensions from triggering React hydration mismatch warnings.
+  3. **Root Error Boundary (`src/app/error.tsx`)**:
+     - Implemented an editorial Rooted-branded error boundary component to gracefully catch and display any unexpected client-side issues with "Try Again" and "Sanctuary" recovery buttons.
+- **Verification**:
+  - `npx tsc --noEmit` verified with 0 errors.
+
+
 
 
 
