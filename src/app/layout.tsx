@@ -63,8 +63,8 @@ export default async function RootLayout({
         },
       }}
     >
-      <html lang="en" className={`${fraunces.variable} ${plusJakarta.variable}`}>
-        <body className="min-h-screen bg-[#F7F4EB] text-[#1A241E] antialiased selection:bg-[#7C9A86]/20 selection:text-[#1E3127]">
+      <html lang="en" suppressHydrationWarning className={`${fraunces.variable} ${plusJakarta.variable}`}>
+        <body suppressHydrationWarning className="min-h-screen bg-[#F7F4EB] text-[#1A241E] antialiased selection:bg-[#7C9A86]/20 selection:text-[#1E3127]">
           <AppShell initialSignedIn={isSignedIn}>{children}</AppShell>
         </body>
       </html>
