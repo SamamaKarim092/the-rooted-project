@@ -193,6 +193,9 @@ export function PeriodicReviewModal({
         return "bg-[#E6EEF5] text-[#4A7298] border border-[#799FBE]/30";
       case "career":
         return "bg-[#EBF2EC] text-[#4B785A] border border-[#78A887]/30";
+      case "others":
+      case "other":
+        return "bg-[#F0EFEB] text-[#555C57] border border-[#7D8580]/30";
       default:
         return "bg-[#F7F4EB] text-[#586B60] border border-[#EAE5D8]";
     }

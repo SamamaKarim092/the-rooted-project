@@ -54,7 +54,7 @@ export const ROOTED_MCP_TOOLS = [
         },
         category: {
           type: "string",
-          enum: ["Mind", "Body", "Craft", "Spirit", "Study", "Career", "General"],
+          enum: ["Mind", "Body", "Craft", "Spirit", "Study", "Career", "General", "Others"],
           description: "Category for the intention. Defaults to 'Craft'.",
         },
         priority: {
@@ -172,7 +172,7 @@ export const ROOTED_MCP_TOOLS = [
         },
         category: {
           type: "string",
-          enum: ["Mind", "Body", "Craft", "Spirit", "Study", "Career", "General"],
+          enum: ["Mind", "Body", "Craft", "Spirit", "Study", "Career", "General", "Others"],
           description: "Category for the note.",
         },
         isPinned: {

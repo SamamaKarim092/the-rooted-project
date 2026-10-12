@@ -33,7 +33,7 @@ interface NotesClientProps {
   initialNotes: Note[];
 }
 
-const CATEGORIES = ["General", "Craft", "Mind", "Body", "Spirit", "Study", "Career"] as const;
+const CATEGORIES = ["General", "Craft", "Mind", "Body", "Spirit", "Study", "Career", "Others"] as const;
 
 export function NotesClient({ initialNotes }: NotesClientProps) {
   const [notes, setNotes] = useState<Note[]>(initialNotes);
@@ -275,6 +275,9 @@ export function NotesClient({ initialNotes }: NotesClientProps) {
         return "bg-[#EBF1F7] text-[#2C5272] border-[#C7D9E7]";
       case "career":
         return "bg-[#F2F4E8] text-[#4F5927] border-[#D5DCAE]";
+      case "others":
+      case "other":
+        return "bg-[#F0EFEB] text-[#4A524D] border-[#DCD9D2]";
       case "general":
       default:
         return "bg-[#F5F2EA] text-[#55635B] border-[#E2DDD3]";

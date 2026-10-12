@@ -396,6 +396,9 @@ export function SeasonsClient({
         return "bg-[#EBF1F5] text-[#3D637E] border border-[#6B90AB]/30";
       case "career":
         return "bg-[#F4F5EB] text-[#636E39] border border-[#8F9C59]/30";
+      case "others":
+      case "other":
+        return "bg-[#F0EFEB] text-[#555C57] border border-[#7D8580]/30";
       case "craft":
       default:
         return "bg-[#F5E8DC] text-[#93593B] border border-[#D4A373]/30";
@@ -1050,7 +1053,7 @@ export function SeasonsClient({
             <div className="flex items-center justify-between gap-2 flex-wrap pt-2 border-t border-[#EAE5D8]">
               <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[11px] font-bold text-[#586B60] mr-1">Category:</span>
-                {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => (
+                {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career", "Others"].map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setTaskCategoryFilter(cat)}

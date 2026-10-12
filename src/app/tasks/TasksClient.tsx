@@ -603,6 +603,9 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
         return "bg-[#EBF1F5] text-[#3D637E] border border-[#6B90AB]/30";
       case "career":
         return "bg-[#F4F5EB] text-[#636E39] border border-[#8F9C59]/30";
+      case "others":
+      case "other":
+        return "bg-[#EFECE8] text-[#555C57] border border-[#7D8580]/30";
       case "craft":
       default:
         return "bg-[#F5E8DC] text-[#93593B] border border-[#D4A373]/30";
@@ -788,7 +791,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                   Category
                 </span>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => {
+                  {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career", "Others"].map((cat) => {
                     const isSelected = selectedCategory === cat;
                     return (
                       <button
@@ -949,7 +952,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
             title="Category"
             className="bg-[#FAF7F0] border border-[#EAE5D8] text-[11px] font-semibold text-[#586B60] rounded-xl px-2.5 py-1.5 outline-none cursor-pointer hover:border-[#7C9A86]/50 transition-colors"
           >
-            {["Craft", "Mind", "Body", "Spirit", "Study", "Career"].map((cat) => (
+            {["Craft", "Mind", "Body", "Spirit", "Study", "Career", "Others"].map((cat) => (
               <option key={cat} value={cat}>
                 {cat}
               </option>
@@ -1312,6 +1315,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                     <option value="Spirit">Spirit</option>
                     <option value="Study">Study</option>
                     <option value="Career">Career</option>
+                    <option value="Others">Others</option>
                   </select>
                 </div>
 
@@ -1454,6 +1458,7 @@ export function TasksClient({ initialTasks, goals, today }: TasksClientProps) {
                     <option value="Spirit">Spirit</option>
                     <option value="Study">Study</option>
                     <option value="Career">Career</option>
+                    <option value="Others">Others</option>
                   </select>
                 </div>
 

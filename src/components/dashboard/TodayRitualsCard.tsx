@@ -59,6 +59,9 @@ export function TodayRitualsCard({ habits: initialHabits, today }: TodayRitualsC
         return "bg-[#EBF1F5] text-[#3D637E] border-[#6B90AB]/30";
       case "career":
         return "bg-[#F4F6E9] text-[#6B7540] border-[#8C9B50]/30";
+      case "others":
+      case "other":
+        return "bg-[#F0EFEB] text-[#555C57] border-[#7D8580]/30";
       case "craft":
       default:
         return "bg-[#FAF3EB] text-[#A66838] border-[#D4A373]/30";

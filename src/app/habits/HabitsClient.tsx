@@ -480,6 +480,9 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
         return "bg-[#EBF1F5] text-[#3D637E] border border-[#6B90AB]/30";
       case "career":
         return "bg-[#F4F5EB] text-[#636E39] border border-[#8F9C59]/30";
+      case "others":
+      case "other":
+        return "bg-[#EFECE8] text-[#555C57] border border-[#7D8580]/30";
       case "craft":
       default:
         return "bg-[#F5E8DC] text-[#93593B] border border-[#D4A373]/30";
@@ -766,7 +769,7 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
                       Category
                     </span>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career"].map((cat) => {
+                      {["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career", "Others"].map((cat) => {
                         const isSelected = activeCategory === cat;
                         return (
                           <button
@@ -1524,6 +1527,7 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
                     <option value="Spirit">Spirit</option>
                     <option value="Study">Study</option>
                     <option value="Career">Career</option>
+                    <option value="Others">Others</option>
                   </select>
                 </div>
 
@@ -1685,6 +1689,7 @@ export function HabitsClient({ initialHabits, goals, today }: HabitsClientProps)
                     <option value="Spirit">Spirit</option>
                     <option value="Study">Study</option>
                     <option value="Career">Career</option>
+                    <option value="Others">Others</option>
                   </select>
                 </div>
 

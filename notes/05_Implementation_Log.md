@@ -1309,6 +1309,38 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
 - **Verification**:
   - `npx tsc --noEmit` verified with 0 errors.
 
+---
+
+### Step 51: Addition of "Others" Category Across All Workflows & Screens
+- **User Directive**:
+  - Add an `"Others"` category option alongside existing categories (`Craft`, `Mind`, `Body`, `Spirit`, `Study`, `Career`).
+- **Implementation Across the Codebase**:
+  1. **Daily Intentions & Dashboard (`src/components/dashboard/`)**:
+     - `DailyIntentionsCard.tsx`: Added `<option value="Others">Others</option>` to category selector dropdown and styled category badge (`bg-[#3A3F3C] text-[#D8DFDA] border-[#505753]/50`).
+     - `TodayRitualsCard.tsx`: Added badge styling for `"others"`.
+     - `DashboardTaskOverview.tsx`: Added badge styling for `"others"`.
+     - `PeriodicReviewModal.tsx`: Added badge styling for `"others"`.
+  2. **Tasks Screen (`src/app/tasks/TasksClient.tsx`)**:
+     - Added `"Others"` to top filter pill bar (`["ALL", "Mind", "Body", "Craft", "Spirit", "Study", "Career", "Others"]`).
+     - Added `"Others"` to quick inline task creation category dropdown.
+     - Added `<option value="Others">Others</option>` to Add Task and Edit Task modal dropdowns.
+     - Added badge styling for `"others"` (`bg-[#EFECE8] text-[#555C57] border-[#7D8580]/30`).
+  3. **Habit Growth & Streaks (`src/app/habits/HabitsClient.tsx`)**:
+     - Added `"Others"` to category filter bar.
+     - Added `<option value="Others">Others</option>` to Create Habit and Edit Habit modals.
+     - Added badge styling for `"others"`.
+  4. **Long-Term Milestones (`src/app/milestones/MilestonesClient.tsx`)**:
+     - Added `{ id: "Others", label: "Others", color: "bg-[#EFECE8] text-[#555C57]" }` to `CATEGORIES` array for Create Goal and Edit Goal modals.
+  5. **Thought Garden & Notes (`src/app/notes/NotesClient.tsx`)**:
+     - Added `"Others"` to `CATEGORIES` constant and badge styling helper.
+  6. **Seasons Retrospective (`src/app/seasons/SeasonsClient.tsx`)**:
+     - Added `"Others"` to category filter pills and badge styling helper.
+  7. **Remote MCP AI Tools (`src/lib/mcp/tools.ts`)**:
+     - Added `"Others"` to JSON Schema category enums for `create_task` and `create_note`.
+- **Verification**:
+  - `npx tsc --noEmit` compiled with 0 errors.
+
+
 
 
 

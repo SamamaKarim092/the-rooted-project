@@ -72,6 +72,7 @@ const CATEGORIES = [
   { id: "Body", label: "Body", color: "bg-[#F9ECE6] text-[#C87452]" },
   { id: "Mind", label: "Mind", color: "bg-[#EAF0EC] text-[#5F7E6A]" },
   { id: "Spirit", label: "Spirit", color: "bg-[#F0EDF5] text-[#6E6482]" },
+  { id: "Others", label: "Others", color: "bg-[#EFECE8] text-[#555C57]" },
 ];
 
 export function MilestonesClient({ initialGoals }: MilestonesClientProps) {

@@ -56,6 +56,9 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
         return "bg-[#233B4C] text-[#B8D5EB] border border-[#395B73]/50";
       case "career":
         return "bg-[#3D472B] text-[#E0EAB9] border border-[#58663E]/50";
+      case "others":
+      case "other":
+        return "bg-[#3A3F3C] text-[#D8DFDA] border border-[#505753]/50";
       case "craft":
       default:
         return "bg-[#C87452] text-[#FAF7F0] border border-[#D98A6C]/50";
@@ -191,6 +194,7 @@ export function DailyIntentionsCard({ tasks }: DailyIntentionsCardProps) {
                   <option value="Spirit">Spirit</option>
                   <option value="Study">Study</option>
                   <option value="Career">Career</option>
+                  <option value="Others">Others</option>
                 </select>
               </div>
 
