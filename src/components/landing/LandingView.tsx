@@ -103,19 +103,19 @@ export function LandingView({ user }: LandingViewProps) {
         {/* Hero Headline Section */}
         <section className="relative z-10 flex-1 flex flex-col items-center justify-center text-center px-6 pt-16 sm:pt-24 pb-28 sm:pb-32 max-w-7xl mx-auto my-auto w-full">
           <p className="text-xs uppercase tracking-[0.25em] text-[#A3BEAD] font-medium mb-6">
-            Mindful Productivity & Habit Architecture
+            Mindful Productivity & Habit Sanctuary
           </p>
           <h1
             className="animate-fade-rise text-5xl sm:text-7xl md:text-8xl lg:text-9xl leading-[0.92] tracking-[-2.5px] max-w-5xl font-normal text-white"
             style={{ fontFamily: "'Instrument Serif', serif" }}
           >
-            Where <em className="not-italic text-neutral-400 font-normal">dreams</em> rise{" "}
-            <em className="not-italic text-neutral-400 font-normal">through the silence.</em>
+            Turn daily <em className="not-italic text-neutral-400 font-normal">intentions</em> into{" "}
+            <em className="not-italic text-neutral-400 font-normal">towering milestones.</em>
           </h1>
 
           <p className="animate-fade-rise-delay text-neutral-300/90 text-base sm:text-lg max-w-2xl mt-8 leading-relaxed font-sans">
-            We build digital spaces for deep thinkers, bold creators, and quiet rebels.
-            Weave your daily intentions into lasting life milestones without overwhelm.
+            A tranquil personal sanctuary connecting your daily to-dos, habit streaks, sleep recovery,
+            and long-term vision roadmaps—free from guilt, clutter, and burnout.
           </p>
 
           <div className="mt-10 sm:mt-12 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
@@ -133,6 +133,10 @@ export function LandingView({ user }: LandingViewProps) {
               Explore the Sanctuary ↓
             </a>
           </div>
+
+          <p className="text-xs text-white/60 font-sans tracking-wide mt-6">
+            ✨ 100% Free · No Credit Card · Private & Open Sanctuary
+          </p>
         </section>
 
         {/* Giant Cropped Wordmark */}
@@ -186,7 +190,7 @@ export function LandingView({ user }: LandingViewProps) {
                   className="text-3xl sm:text-4xl font-normal tracking-tight"
                   style={{ fontFamily: "'Instrument Serif', serif" }}
                 >
-                  Daily Intentions & Focus Dials
+                  Daily To-Do Lists & Morning Focus Schedule
                 </h3>
                 <p className="text-sm sm:text-base text-white/80 mt-2 max-w-xl font-sans leading-relaxed">
                   Capture immediate responsibilities without cognitive overload. A 24-hour circular dial, 
@@ -219,7 +223,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-3xl font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Habit Matrix & Mastered Rituals
+                Visual Habit Tracker & Consistency Streaks
               </h3>
               <p className="text-sm sm:text-base text-white/80 mt-2 max-w-md font-sans leading-relaxed">
                 Consistency measured with grace. Track streaks through an organic matrix, and graduate finished learning 
@@ -247,7 +251,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-3xl font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Botanical Milestones
+                Long-Term Goals & Milestone Roadmaps
               </h3>
               <p className="text-sm sm:text-base text-white/80 mt-2 max-w-sm font-sans leading-relaxed">
                 From Seed to Sprout to Milestone. Connect today&apos;s 15-minute practice directly to your overarching life vision.
@@ -277,7 +281,7 @@ export function LandingView({ user }: LandingViewProps) {
                   className="text-3xl sm:text-4xl font-normal tracking-tight"
                   style={{ fontFamily: "'Instrument Serif', serif" }}
                 >
-                  Seasonal History & Sleep Recovery
+                  Monthly Calendar History & Sleep Tracking
                 </h3>
                 <p className="text-sm sm:text-base text-white/80 mt-2 max-w-xl font-sans leading-relaxed">
                   Life moves in natural seasons of creation and rest. Look back across months with pride rather than shame,
@@ -406,7 +410,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Daily Focus Dials & Horizonal Intentions
+                Daily To-Do Lists & Morning Focus Schedule
               </span>
               <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
                 01
@@ -425,7 +429,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Organic Habit Matrix & Rolling Streaks
+                Visual Habit Tracker & Consistency Streaks
               </span>
               <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
                 02
@@ -444,7 +448,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Ritual Graduation & Mastered Learning Sprints
+                Completed Habits & Skills Archive
               </span>
               <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
                 03
@@ -463,7 +467,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Botanical Milestones & Vision Roadmaps
+                Long-Term Goals & Milestone Roadmaps
               </span>
               <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
                 04
@@ -482,7 +486,7 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Seasonal Retrospective & Sleep Rhythm Tracking
+                Sleep Tracking & Monthly Calendar History
               </span>
               <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
                 05
@@ -492,7 +496,7 @@ export function LandingView({ user }: LandingViewProps) {
             {/* Row 06 */}
             <Link
               href={destination}
-              className="group flex items-baseline justify-between border-t border-b border-white/15 py-7 sm:py-9 hover:border-[#7C9A86]/60 transition-colors duration-500 cursor-pointer"
+              className="group flex items-baseline justify-between border-t border-white/15 py-7 sm:py-9 hover:border-[#7C9A86]/60 transition-colors duration-500 cursor-pointer"
               data-preview="https://images.unsplash.com/photo-1519710164239-da123dc03ef4?q=80&w=600&auto=format&fit=crop"
               data-reveal=""
               style={{ transitionDelay: "400ms" }}
@@ -501,10 +505,29 @@ export function LandingView({ user }: LandingViewProps) {
                 className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
                 style={{ fontFamily: "'Instrument Serif', serif" }}
               >
-                Thought Garden & Calendar-Accurate Notes
+                Personal Daily Journal & Mindful Notes
               </span>
               <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
                 06
+              </span>
+            </Link>
+
+            {/* Row 07 */}
+            <Link
+              href={destination}
+              className="group flex items-baseline justify-between border-t border-b border-white/15 py-7 sm:py-9 hover:border-[#7C9A86]/60 transition-colors duration-500 cursor-pointer"
+              data-preview="https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=600&auto=format&fit=crop"
+              data-reveal=""
+              style={{ transitionDelay: "480ms" }}
+            >
+              <span
+                className="text-2xl sm:text-4xl text-white/80 group-hover:text-white group-hover:translate-x-3 transition-all duration-500 font-normal tracking-tight"
+                style={{ fontFamily: "'Instrument Serif', serif" }}
+              >
+                Remote MCP & AI Assistant Control (Claude & Cursor)
+              </span>
+              <span className="text-xs text-white/40 group-hover:text-[#7C9A86] transition-colors duration-500 font-sans">
+                07
               </span>
             </Link>
           </div>
@@ -545,13 +568,13 @@ export function LandingView({ user }: LandingViewProps) {
               style={{ fontFamily: "'Instrument Serif', serif" }}
               data-reveal-words="true"
             >
-              &ldquo;Traditional to-do apps were a graveyard of unfinished guilt. 
-              Rooted gave my days an organic cadence. I finally understand the link between 
-              today&apos;s quiet 20-minute intention and the person I am growing into.&rdquo;
+              &ldquo;Traditional productivity apps are graveyards of unfinished tasks and red badges that trigger guilt. 
+              We built Rooted to restore dignity and calm to daily living: a sanctuary where a quiet 20-minute intention planted 
+              today organically grows into the person you become tomorrow.&rdquo;
             </blockquote>
             <div className="mt-8 pt-6 border-t border-[#EAE5D8]" data-reveal="" style={{ transitionDelay: "300ms" }}>
-              <p className="text-base font-semibold text-[#1A241E]">Evelyn Vance</p>
-              <p className="text-sm text-[#586B60]">Author & Systems Designer</p>
+              <p className="text-base font-semibold text-[#1A241E]">The Rooted Manifesto</p>
+              <p className="text-sm text-[#586B60]">Our Core Philosophy & Commitment</p>
             </div>
           </div>
         </div>
@@ -668,11 +691,15 @@ export function LandingView({ user }: LandingViewProps) {
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-4 h-4 text-[#7C9A86] shrink-0 mt-0.5" />
-                  <span><strong>Holistic Life Harmony</strong>: Track rest, habits, and tasks across Mind, Body, Craft, and Spirit.</span>
+                  <span><strong>Holistic Life Harmony</strong>: Track rest, habits, and tasks across Mind, Body, Craft, Spirit, and beyond.</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <Check className="w-4 h-4 text-[#7C9A86] shrink-0 mt-0.5" />
-                  <span><strong>Private & Permanent</strong>: Stored securely in your dedicated SQLite database space.</span>
+                  <span><strong>Private & Permanent</strong>: Stored securely in your dedicated SQLite database space with zero ad tracking.</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check className="w-4 h-4 text-[#7C9A86] shrink-0 mt-0.5" />
+                  <span><strong>100% Free Sanctuary</strong>: All 5 pillars completely unlocked with zero paywalls, subscriptions, or credit cards required.</span>
                 </li>
               </ul>
             </div>

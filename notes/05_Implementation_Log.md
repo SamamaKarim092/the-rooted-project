@@ -1337,8 +1337,53 @@ Parent: [[00_Index]] | Previous: [[04_Features_and_Workflows]]
      - Added `"Others"` to category filter pills and badge styling helper.
   7. **Remote MCP AI Tools (`src/lib/mcp/tools.ts`)**:
      - Added `"Others"` to JSON Schema category enums for `create_task` and `create_note`.
+---
+
+### Step 52: Landing Page Copy Upgrade for Product Hunt Launch Readiness
+- **Objective**:
+  - Upgrade landing page text to improve conversion, clarity, and Product Hunt relevance while strictly preserving 100% of the existing layout, styles, and aesthetic design.
+- **Key Enhancements in `src/components/landing/LandingView.tsx`**:
+  1. **Hero Headline & Subtext**:
+     - Upgraded eyebrow to `Mindful Productivity & Habit Sanctuary`.
+     - Replaced abstract headline with clear value hook: `Turn daily intentions into towering milestones.`
+     - Refined subtext to explicitly state what Rooted is: *"A tranquil personal sanctuary connecting your daily to-dos, habit streaks, sleep recovery, and long-term vision roadmaps—free from guilt, clutter, and burnout."*
+     - Added subtle trust badge directly under CTA: `✨ 100% Free · No Credit Card · Private & Open Sanctuary`.
+  2. **Sanctuary Capabilities & Reel Titles (Plain-English Clarity)**:
+     - Replaced abstract and confusing jargon with crystal-clear titles:
+       - 01: `Daily To-Do Lists & Morning Focus Schedule` (was: "Daily Focus Dials & Horizonal Intentions")
+       - 02: `Visual Habit Tracker & Consistency Streaks` (was: "Organic Habit Matrix & Rolling Streaks")
+       - 03: `Completed Habits & Skills Archive` (was: "Ritual Graduation & Mastered Learning Sprints")
+       - 04: `Long-Term Goals & Milestone Roadmaps` (was: "Botanical Milestones & Vision Roadmaps")
+       - 05: `Sleep Tracking & Monthly Calendar History` (was: "Seasonal Retrospective & Sleep Rhythm Tracking")
+       - 06: `Personal Daily Journal & Mindful Notes` (was: "Thought Garden & Calendar-Accurate Notes")
+       - 07: `Remote MCP & AI Assistant Control (Claude & Cursor)`
+     - Synchronized the 4 reel panels with the same clear feature terminology.
+  3. **Authentic Core Reflection**:
+     - Replaced generic fictional persona quote with **The Rooted Manifesto** ("Our Core Philosophy & Commitment"), maintaining editorial serif typography and pullquote styling.
+  4. **Sanctuary Guarantees**:
+     - Updated category scope to include *"Mind, Body, Craft, Spirit, and beyond"*.
+     - Added 4th guarantee: **100% Free Sanctuary** (zero paywalls, subscriptions, or credit card requirements).
+---
+
+### Step 53: Google Cloud Run Containerization on Dedicated Branch
+- **Objective**:
+  - Containerize Rooted for Google Cloud Run deployment to participate in the Product Hunt Google Cloud Run Hackathon, while maintaining complete isolation from the production Vercel `main` branch.
+- **Dedicated Branch**:
+  - Created and checked out `google-cloud-run` branch (`git checkout -b google-cloud-run`).
+- **Architectural Enhancements**:
+  1. **Next.js Standalone Configuration (`next.config.ts`)**:
+     - Configured `output: "standalone"` to automatically trace and generate a lightweight self-contained server bundle in `.next/standalone`.
+  2. **Multi-Stage Dockerfile (`Dockerfile`)**:
+     - **Stage 1 (deps)**: Lightweight `node:22-alpine` installing clean dependencies via `npm ci`.
+     - **Stage 2 (builder)**: Pre-generates Prisma client via `npx prisma generate`, sets build args for Clerk public keys, and runs `npm run build`.
+     - **Stage 3 (runner)**: Minimal non-root Alpine container (`nextjs:nodejs`), exposing port `8080`, and launching `node server.js`.
+  3. **Docker Build Rules (`.dockerignore`)**:
+     - Excluded `node_modules`, `.next`, `.git`, `.env*`, and local design/notes assets to keep the image slim and secure.
 - **Verification**:
-  - `npx tsc --noEmit` compiled with 0 errors.
+  - Successfully ran `npm run build` with Turbopack and TypeScript verification.
+  - Confirmed `.next/standalone/server.js` was created and validated.
+
+
 
 
 
